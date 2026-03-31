@@ -104,13 +104,13 @@
                 <!-- Result Field -->
                 <div class="space-y-2">
                     <label for="input-tajuk" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
-                        <i data-lucide="file-text" class="w-4 h-4"></i>
-                        <span>HASIL IMBASAN (TAJUK)</span>
+                        <i data-lucide="book-open" class="w-4 h-4 text-blue-600"></i>
+                        <span>TAJUK BUKU TERKESAN</span>
                     </label>
                     <div class="relative">
                         <input type="text" id="input-tajuk" 
-                               placeholder="Teks akan muncul di sini secara automatik..."
-                               class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-medium placeholder:text-slate-400 focus:border-blue-500 focus:ring-0 outline-none transition-all">
+                               placeholder="Tajuk buku akan dipaparkan di sini..."
+                               class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold placeholder:text-slate-400 focus:border-blue-500 focus:ring-0 outline-none transition-all uppercase">
                         <button onclick="copyToClipboard()" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-blue-600 transition-colors">
                             <i data-lucide="copy" class="w-5 h-5"></i>
                         </button>
@@ -120,7 +120,7 @@
         </div>
 
         <p class="text-center text-slate-400 text-xs mt-8 uppercase tracking-widest font-semibold">
-            Powered by Tesseract.js & Tailwind CSS
+            Sistem Pengecaman Tajuk Automatik
         </p>
     </div>
 
@@ -194,7 +194,7 @@
         function prosesOCR(source) {
             statusContainer.classList.remove('hidden');
             loadingSpinner.style.display = 'block';
-            statusText.innerText = "Mengecam teks...";
+            statusText.innerText = "Mengecam tajuk...";
             inputTajuk.value = "";
 
             Tesseract.recognize(
@@ -208,8 +208,18 @@
                     } 
                 }
             ).then(({ data: { text } }) => {
-                const cleanText = text.trim().replace(/\n/g, ' ').replace(/\s\s+/g, ' ');
-                inputTajuk.value = cleanText || "Tiada teks dikesan";
+                // Pembersihan teks khusus untuk tajuk buku:
+                // 1. Buang simbol bukan abjad/nombor (kecuali ruang kosong)
+                // 2. Buang baris baru
+                // 3. Buang ruang kosong berlebihan
+                let cleanText = text
+                    .replace(/[^a-zA-Z0-9\s]/g, '') // Hanya kekalkan huruf, nombor dan ruang
+                    .replace(/\n/g, ' ')           // Ganti baris baru dengan ruang
+                    .replace(/\s\s+/g, ' ')        // Ganti ruang berganda dengan satu ruang
+                    .trim()                        // Buang ruang di hujung/pangkal
+                    .toUpperCase();                // Format tajuk biasanya dalam huruf besar
+
+                inputTajuk.value = cleanText || "TAJUK TIDAK DIKESAN";
                 loadingSpinner.style.display = 'none';
                 statusText.innerText = "Imbasan berjaya!";
                 setTimeout(() => statusContainer.classList.add('hidden'), 3000);
@@ -230,7 +240,7 @@
             
             const originalText = statusText.innerText;
             statusContainer.classList.remove('hidden');
-            statusText.innerText = "Teks disalin ke papan klip!";
+            statusText.innerText = "Tajuk disalin!";
             setTimeout(() => {
                 statusContainer.classList.add('hidden');
                 statusText.innerText = originalText;
