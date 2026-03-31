@@ -130,7 +130,7 @@
                                 <i data-lucide="gauge" class="w-4 h-4 text-blue-600"></i>
                                 <span>METER / JUMLAH</span>
                             </label>
-                            <input type="text" id="input-meter" placeholder="Cth: 10m / 5 Unit"
+                            <input type="text" id="input-meter" placeholder="Cth: 10m"
                                    class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold focus:border-blue-500 outline-none transition-all">
                         </div>
                     </div>
@@ -150,14 +150,18 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="grid grid-cols-2 gap-3 pt-4">
-                        <button onclick="resetForm()" class="btn-primary flex items-center justify-center space-x-2 bg-red-50 text-red-600 py-4 px-4 rounded-2xl font-bold hover:bg-red-100">
-                            <i data-lucide="trash-2" class="w-5 h-5"></i>
-                            <span>RESET</span>
+                    <div class="grid grid-cols-3 gap-3 pt-4">
+                        <button onclick="resetForm()" class="btn-primary flex items-center justify-center space-x-1 bg-red-50 text-red-600 py-4 px-2 rounded-2xl font-bold hover:bg-red-100">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            <span class="text-sm">RESET</span>
                         </button>
-                        <button onclick="copyAllData()" class="btn-primary flex items-center justify-center space-x-2 bg-blue-600 text-white py-4 px-4 rounded-2xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200">
-                            <i data-lucide="copy" class="w-5 h-5"></i>
-                            <span>SALIN SEMUA</span>
+                        <button onclick="copyAllData()" class="btn-primary flex items-center justify-center space-x-1 bg-slate-100 text-slate-700 py-4 px-2 rounded-2xl font-bold hover:bg-slate-200">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                            <span class="text-sm">SALIN</span>
+                        </button>
+                        <button id="btn-save" onclick="saveToSheets()" class="btn-primary flex items-center justify-center space-x-1 bg-green-600 text-white py-4 px-2 rounded-2xl font-bold hover:bg-green-700 shadow-lg shadow-green-100">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            <span class="text-sm">SIMPAN</span>
                         </button>
                     </div>
                 </div>
@@ -171,6 +175,9 @@
 
     <script>
         lucide.createIcons();
+
+        // GANTIKAN URL INI DENGAN URL WEB APP DARI GOOGLE APPS SCRIPT ANDA
+        const scriptURL = 'SILA_MASUKKAN_URL_SCRIPT_DI_SINI';
 
         const video = document.getElementById('camera-preview');
         const canvas = document.getElementById('capture-canvas');
@@ -283,14 +290,11 @@
         }
 
         function copyAllData() {
-            if (!inputTajuk.value && !inputTahun.value && !inputMeter.value) {
+            if (!inputTajuk.value) {
                 alert("Sila isi maklumat sebelum menyalin.");
                 return;
             }
-
             const formatData = `TAJUK: ${inputTajuk.value}\nTAHUN: ${inputTahun.value}\nMETER/JUMLAH: ${inputMeter.value}\nCADANGAN: ${selectCadangan.value}`;
-            
-            // Mencuba menyalin ke clipboard menggunakan execCommand sebagai fallback
             const textArea = document.createElement("textarea");
             textArea.value = formatData;
             document.body.appendChild(textArea);
@@ -299,8 +303,49 @@
             document.body.removeChild(textArea);
 
             statusContainer.classList.remove('hidden');
-            statusText.innerText = "Semua maklumat telah disalin!";
+            statusText.innerText = "Maklumat disalin!";
             setTimeout(() => statusContainer.classList.add('hidden'), 2000);
+        }
+
+        async function saveToSheets() {
+            if (!inputTajuk.value) {
+                alert("Sila isi tajuk terlebih dahulu.");
+                return;
+            }
+
+            if (scriptURL === 'SILA_MASUKKAN_URL_SCRIPT_DI_SINI') {
+                alert("Sila masukkan URL Google Apps Script dalam kod terlebih dahulu.");
+                return;
+            }
+
+            const btnSave = document.getElementById('btn-save');
+            btnSave.disabled = true;
+            btnSave.innerText = "Menyimpan...";
+            
+            statusContainer.classList.remove('hidden');
+            loadingSpinner.style.display = 'block';
+            statusText.innerText = "Menghantar data ke Google Sheets...";
+
+            const formData = new FormData();
+            formData.append('TARIKH', new Date().toLocaleDateString('ms-MY'));
+            formData.append('TAJUK_REKOD_BAHAN', inputTajuk.value);
+            formData.append('TAHUN', inputTahun.value);
+            formData.append('METER_JUMLAH', inputMeter.value);
+            formData.append('CADANGAN_TINDAKAN', selectCadangan.value);
+
+            try {
+                await fetch(scriptURL, { method: 'POST', body: formData });
+                statusText.innerText = "Data berjaya disimpan!";
+                resetForm();
+            } catch (error) {
+                console.error('Ralat!', error.message);
+                statusText.innerText = "Ralat semasa menyimpan.";
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i><span class="text-sm">SIMPAN</span>`;
+                lucide.createIcons();
+                setTimeout(() => statusContainer.classList.add('hidden'), 3000);
+            }
         }
     </script>
 </body>
