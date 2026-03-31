@@ -21,8 +21,9 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        #camera-preview {
-            transform: scaleX(-1); /* Mirror view untuk kamera depan */
+        /* Mirror view untuk keselesaan pengguna semasa membidik */
+        .mirror {
+            transform: scaleX(-1);
         }
     </style>
 </head>
@@ -34,7 +35,8 @@
         <!-- Bahagian Kamera -->
         <div class="mb-4">
             <div class="relative bg-black rounded-lg overflow-hidden aspect-video mb-2">
-                <video id="camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
+                <!-- Tambah class mirror secara dinamik -->
+                <video id="camera-preview" autoplay playsinline class="w-full h-full object-cover mirror"></video>
                 <canvas id="capture-canvas" class="hidden"></canvas>
             </div>
             <div class="flex space-x-2">
@@ -71,7 +73,7 @@
                    class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition-all">
         </div>
 
-        <p class="text-xs text-gray-500 italic text-center">Nota: Pastikan teks dalam gambar jelas dan terang.</p>
+        <p class="text-xs text-gray-500 italic text-center">Nota: Gambar akan diperbetulkan secara automatik sebelum diproses.</p>
     </div>
 
     <script>
@@ -87,20 +89,24 @@
         const statusText = document.getElementById('status-text');
 
         let stream = null;
+        let isFrontCamera = true;
 
         // Fungsi Membuka Kamera
         btnStart.addEventListener('click', async () => {
             try {
+                // Cuba akses kamera hadapan secara default
                 stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' }, // Gunakan kamera belakang jika ada
+                    video: { facingMode: 'user' }, 
                     audio: false 
                 });
                 video.srcObject = stream;
                 btnStart.classList.add('hidden');
                 btnSnap.classList.remove('hidden');
+                video.classList.add('mirror'); // Mirroring untuk kamera hadapan
+                isFrontCamera = true;
             } catch (err) {
                 console.error("Ralat akses kamera: ", err);
-                alert("Tidak dapat mengakses kamera. Sila pastikan anda memberi kebenaran.");
+                alert("Tidak dapat mengakses kamera.");
             }
         });
 
@@ -110,15 +116,23 @@
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
             
+            // Logik membetulkan imej jika kamera hadapan (mirrored) digunakan
+            if (isFrontCamera) {
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+            }
+            
             // Lukis frame video ke canvas
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // Tukar canvas ke Blob/DataURL
+            // Tukar canvas ke DataURL
             const dataUrl = canvas.toDataURL('image/jpeg');
             prosesOCR(dataUrl);
             
-            // Tutup kamera selepas snap (pilihan)
-            stream.getTracks().forEach(track => track.stop());
+            // Tutup kamera
+            if(stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
             btnStart.classList.remove('hidden');
             btnSnap.classList.add('hidden');
             video.srcObject = null;
