@@ -21,10 +21,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Mirror view untuk keselesaan pengguna semasa membidik */
-        .mirror {
-            transform: scaleX(-1);
-        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-4 md:p-8">
@@ -35,12 +31,12 @@
         <!-- Bahagian Kamera -->
         <div class="mb-4">
             <div class="relative bg-black rounded-lg overflow-hidden aspect-video mb-2">
-                <!-- Tambah class mirror secara dinamik -->
-                <video id="camera-preview" autoplay playsinline class="w-full h-full object-cover mirror"></video>
+                <!-- Mirror dibuang kerana guna kamera belakang -->
+                <video id="camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
                 <canvas id="capture-canvas" class="hidden"></canvas>
             </div>
             <div class="flex space-x-2">
-                <button id="btn-start-camera" class="flex-1 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition">Buka Kamera</button>
+                <button id="btn-start-camera" class="flex-1 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition">Buka Kamera Belakang</button>
                 <button id="btn-snap" class="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition hidden">Ambil Gambar</button>
             </div>
         </div>
@@ -73,7 +69,7 @@
                    class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition-all">
         </div>
 
-        <p class="text-xs text-gray-500 italic text-center">Nota: Gambar akan diperbetulkan secara automatik sebelum diproses.</p>
+        <p class="text-xs text-gray-500 italic text-center">Nota: Menggunakan kamera belakang untuk ketepatan imej yang lebih baik.</p>
     </div>
 
     <script>
@@ -89,24 +85,29 @@
         const statusText = document.getElementById('status-text');
 
         let stream = null;
-        let isFrontCamera = true;
 
-        // Fungsi Membuka Kamera
+        // Fungsi Membuka Kamera Belakang
         btnStart.addEventListener('click', async () => {
             try {
-                // Cuba akses kamera hadapan secara default
+                // Set facingMode ke 'environment' untuk kamera belakang
                 stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user' }, 
+                    video: { facingMode: { exact: "environment" } }, 
                     audio: false 
+                }).catch(async () => {
+                    // Fallback jika 'exact' tidak disokong atau gagal
+                    return await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: "environment" }, 
+                        audio: false 
+                    });
                 });
+
                 video.srcObject = stream;
                 btnStart.classList.add('hidden');
                 btnSnap.classList.remove('hidden');
-                video.classList.add('mirror'); // Mirroring untuk kamera hadapan
-                isFrontCamera = true;
+                video.classList.remove('mirror'); // Pastikan tiada kesan mirror
             } catch (err) {
                 console.error("Ralat akses kamera: ", err);
-                alert("Tidak dapat mengakses kamera.");
+                alert("Tidak dapat mengakses kamera belakang. Sila pastikan peranti anda mempunyai kamera belakang dan kebenaran telah diberikan.");
             }
         });
 
@@ -116,13 +117,7 @@
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
             
-            // Logik membetulkan imej jika kamera hadapan (mirrored) digunakan
-            if (isFrontCamera) {
-                ctx.translate(canvas.width, 0);
-                ctx.scale(-1, 1);
-            }
-            
-            // Lukis frame video ke canvas
+            // Tiada pembetulan mirror diperlukan untuk kamera belakang
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
             // Tukar canvas ke DataURL
