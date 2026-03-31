@@ -30,17 +30,18 @@
             100% { transform: rotate(360deg); }
         }
 
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-        }
-
         .btn-primary {
             transition: all 0.2s ease-in-out;
         }
         
         .btn-primary:active {
             transform: scale(0.95);
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
     </style>
 </head>
@@ -53,7 +54,7 @@
                 <i data-lucide="camera" class="w-8 h-8"></i>
             </div>
             <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">KAMERA PELUPUSAN PINTAR</h1>
-            <p class="text-slate-500 mt-2 font-medium">Ekstrak maklumat teks dengan satu imbasan</p>
+            <p class="text-slate-500 mt-2 font-medium">Sistem Pengurusan Rekod & Pelupusan Bahan</p>
         </div>
 
         <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 overflow-hidden border border-slate-100">
@@ -69,7 +70,7 @@
                 <!-- Placeholder when camera is off -->
                 <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
                     <i data-lucide="image" class="w-12 h-12 mb-3 opacity-20"></i>
-                    <p class="text-sm">Kamera belum diaktifkan</p>
+                    <p class="text-sm text-slate-500">Kamera Sedia Untuk Digunakan</p>
                 </div>
             </div>
 
@@ -97,22 +98,66 @@
                 <div id="status-container" class="mb-6 p-4 bg-blue-50 rounded-2xl flex items-center justify-between hidden">
                     <div class="flex items-center space-x-3">
                         <div class="loader" id="loading-spinner"></div>
-                        <span id="status-text" class="text-sm font-semibold text-blue-700">Menyediakan enjin OCR...</span>
+                        <span id="status-text" class="text-sm font-semibold text-blue-700">Mengecam teks...</span>
                     </div>
                 </div>
 
-                <!-- Result Field -->
-                <div class="space-y-2">
-                    <label for="input-tajuk" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
-                        <i data-lucide="book-open" class="w-4 h-4 text-blue-600"></i>
-                        <span>TAJUK BUKU TERKESAN</span>
-                    </label>
-                    <div class="relative">
+                <!-- Form Fields -->
+                <div class="space-y-4">
+                    <!-- Tajuk Rekod -->
+                    <div class="space-y-2">
+                        <label for="input-tajuk" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
+                            <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
+                            <span>TAJUK REKOD / BAHAN</span>
+                        </label>
                         <input type="text" id="input-tajuk" 
-                               placeholder="Tajuk buku akan dipaparkan di sini..."
+                               placeholder="Tajuk akan diisi secara imbasan..."
                                class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold placeholder:text-slate-400 focus:border-blue-500 focus:ring-0 outline-none transition-all uppercase">
-                        <button onclick="copyToClipboard()" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-blue-600 transition-colors">
+                    </div>
+
+                    <!-- Tahun & Meter Row -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label for="input-tahun" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
+                                <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+                                <span>TAHUN</span>
+                            </label>
+                            <input type="number" id="input-tahun" placeholder="2024"
+                                   class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold focus:border-blue-500 outline-none transition-all">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="input-meter" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
+                                <i data-lucide="gauge" class="w-4 h-4 text-blue-600"></i>
+                                <span>METER / JUMLAH</span>
+                            </label>
+                            <input type="text" id="input-meter" placeholder="Cth: 10m / 5 Unit"
+                                   class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold focus:border-blue-500 outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <!-- Cadangan Dropdown -->
+                    <div class="space-y-2">
+                        <label for="select-cadangan" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
+                            <i data-lucide="arrow-right-circle" class="w-4 h-4 text-blue-600"></i>
+                            <span>CADANGAN TINDAKAN</span>
+                        </label>
+                        <select id="select-cadangan" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer">
+                            <option value="">-- Sila Pilih --</option>
+                            <option value="MUSNAH">MUSNAH</option>
+                            <option value="KITAR SEMULA">KITAR SEMULA</option>
+                            <option value="DERMA">DERMA</option>
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-2 gap-3 pt-4">
+                        <button onclick="resetForm()" class="btn-primary flex items-center justify-center space-x-2 bg-red-50 text-red-600 py-4 px-4 rounded-2xl font-bold hover:bg-red-100">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            <span>RESET</span>
+                        </button>
+                        <button onclick="copyAllData()" class="btn-primary flex items-center justify-center space-x-2 bg-blue-600 text-white py-4 px-4 rounded-2xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200">
                             <i data-lucide="copy" class="w-5 h-5"></i>
+                            <span>SALIN SEMUA</span>
                         </button>
                     </div>
                 </div>
@@ -120,12 +165,11 @@
         </div>
 
         <p class="text-center text-slate-400 text-xs mt-8 uppercase tracking-widest font-semibold">
-            Sistem Pengecaman Tajuk Automatik
+            Sistem Inventori Pelupusan Digital
         </p>
     </div>
 
     <script>
-        // Initialize Lucide Icons
         lucide.createIcons();
 
         const video = document.getElementById('camera-preview');
@@ -137,6 +181,10 @@
         
         const inputGambar = document.getElementById('gambar-input');
         const inputTajuk = document.getElementById('input-tajuk');
+        const inputTahun = document.getElementById('input-tahun');
+        const inputMeter = document.getElementById('input-meter');
+        const selectCadangan = document.getElementById('select-cadangan');
+        
         const statusContainer = document.getElementById('status-container');
         const loadingSpinner = document.getElementById('loading-spinner');
         const statusText = document.getElementById('status-text');
@@ -162,7 +210,7 @@
                 cameraOverlay.classList.remove('hidden');
             } catch (err) {
                 console.error("Ralat akses kamera: ", err);
-                alert("Ralat: Kamera belakang tidak dijumpai atau akses dinafikan.");
+                alert("Akses kamera dinafikan atau tidak dijumpai.");
             }
         });
 
@@ -208,18 +256,14 @@
                     } 
                 }
             ).then(({ data: { text } }) => {
-                // Pembersihan teks khusus untuk tajuk buku:
-                // 1. Buang simbol bukan abjad/nombor (kecuali ruang kosong)
-                // 2. Buang baris baru
-                // 3. Buang ruang kosong berlebihan
                 let cleanText = text
-                    .replace(/[^a-zA-Z0-9\s]/g, '') // Hanya kekalkan huruf, nombor dan ruang
-                    .replace(/\n/g, ' ')           // Ganti baris baru dengan ruang
-                    .replace(/\s\s+/g, ' ')        // Ganti ruang berganda dengan satu ruang
-                    .trim()                        // Buang ruang di hujung/pangkal
-                    .toUpperCase();                // Format tajuk biasanya dalam huruf besar
+                    .replace(/[^a-zA-Z0-9\s]/g, '')
+                    .replace(/\n/g, ' ')
+                    .replace(/\s\s+/g, ' ')
+                    .trim()
+                    .toUpperCase();
 
-                inputTajuk.value = cleanText || "TAJUK TIDAK DIKESAN";
+                inputTajuk.value = cleanText || "TIADA TEKS DIKESAN";
                 loadingSpinner.style.display = 'none';
                 statusText.innerText = "Imbasan berjaya!";
                 setTimeout(() => statusContainer.classList.add('hidden'), 3000);
@@ -230,21 +274,33 @@
             });
         }
 
-        function copyToClipboard() {
-            const copyText = document.getElementById("input-tajuk");
-            if (!copyText.value) return;
+        function resetForm() {
+            inputTajuk.value = "";
+            inputTahun.value = "";
+            inputMeter.value = "";
+            selectCadangan.value = "";
+            statusContainer.classList.add('hidden');
+        }
+
+        function copyAllData() {
+            if (!inputTajuk.value && !inputTahun.value && !inputMeter.value) {
+                alert("Sila isi maklumat sebelum menyalin.");
+                return;
+            }
+
+            const formatData = `TAJUK: ${inputTajuk.value}\nTAHUN: ${inputTahun.value}\nMETER/JUMLAH: ${inputMeter.value}\nCADANGAN: ${selectCadangan.value}`;
             
-            copyText.select();
-            copyText.setSelectionRange(0, 99999);
-            document.execCommand("copy");
-            
-            const originalText = statusText.innerText;
+            // Mencuba menyalin ke clipboard menggunakan execCommand sebagai fallback
+            const textArea = document.createElement("textarea");
+            textArea.value = formatData;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+
             statusContainer.classList.remove('hidden');
-            statusText.innerText = "Tajuk disalin!";
-            setTimeout(() => {
-                statusContainer.classList.add('hidden');
-                statusText.innerText = originalText;
-            }, 2000);
+            statusText.innerText = "Semua maklumat telah disalin!";
+            setTimeout(() => statusContainer.classList.add('hidden'), 2000);
         }
     </script>
 </body>
