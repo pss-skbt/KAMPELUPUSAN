@@ -3,80 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ekstrak Teks ke Tajuk</title>
+    <title>Kamera Pelupusan Pintar</title>
     <!-- Memuatkan Tesseract.js daripada CDN -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons untuk estetika UI -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 2s linear infinite;
-            display: none;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
         }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-primary {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+<body class="bg-slate-50 min-h-screen">
 
-    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <h1 class="text-2xl font-bold mb-4 text-gray-800 text-center">Aplikasi OCR Pintar</h1>
-        
-        <!-- Bahagian Kamera -->
-        <div class="mb-4">
-            <div class="relative bg-black rounded-lg overflow-hidden aspect-video mb-2">
-                <!-- Mirror dibuang kerana guna kamera belakang -->
+    <div class="max-w-xl mx-auto py-10 px-4">
+        <!-- Header Section -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center p-3 bg-blue-600 rounded-2xl shadow-lg mb-4 text-white">
+                <i data-lucide="camera" class="w-8 h-8"></i>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">KAMERA PELUPUSAN PINTAR</h1>
+            <p class="text-slate-500 mt-2 font-medium">Ekstrak maklumat teks dengan satu imbasan</p>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 overflow-hidden border border-slate-100">
+            
+            <!-- Camera Viewfinder -->
+            <div class="relative bg-slate-900 aspect-[4/3] flex items-center justify-center">
                 <video id="camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
                 <canvas id="capture-canvas" class="hidden"></canvas>
+                
+                <!-- Overlay Grid for Focus -->
+                <div id="camera-overlay" class="absolute inset-0 border-2 border-dashed border-white/30 m-8 pointer-events-none rounded-lg hidden"></div>
+                
+                <!-- Placeholder when camera is off -->
+                <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+                    <i data-lucide="image" class="w-12 h-12 mb-3 opacity-20"></i>
+                    <p class="text-sm">Kamera belum diaktifkan</p>
+                </div>
             </div>
-            <div class="flex space-x-2">
-                <button id="btn-start-camera" class="flex-1 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition">Buka Kamera Belakang</button>
-                <button id="btn-snap" class="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition hidden">Ambil Gambar</button>
+
+            <div class="p-6">
+                <!-- Control Buttons -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <button id="btn-start-camera" class="btn-primary flex items-center justify-center space-x-2 bg-slate-900 text-white py-3.5 px-4 rounded-xl font-semibold hover:bg-slate-800 shadow-md">
+                        <i data-lucide="video" class="w-5 h-5"></i>
+                        <span>Buka Kamera</span>
+                    </button>
+                    
+                    <button id="btn-snap" class="btn-primary flex items-center justify-center space-x-2 bg-blue-600 text-white py-3.5 px-4 rounded-xl font-semibold hover:bg-blue-700 shadow-md shadow-blue-200 hidden">
+                        <i data-lucide="aperture" class="w-5 h-5"></i>
+                        <span>Ambil Gambar</span>
+                    </button>
+
+                    <label for="gambar-input" class="btn-primary cursor-pointer flex items-center justify-center space-x-2 bg-slate-100 text-slate-700 py-3.5 px-4 rounded-xl font-semibold hover:bg-slate-200">
+                        <i data-lucide="upload" class="w-5 h-5"></i>
+                        <span>Muat Naik</span>
+                    </label>
+                    <input type="file" id="gambar-input" accept="image/*" class="hidden">
+                </div>
+
+                <!-- Processing Status -->
+                <div id="status-container" class="mb-6 p-4 bg-blue-50 rounded-2xl flex items-center justify-between hidden">
+                    <div class="flex items-center space-x-3">
+                        <div class="loader" id="loading-spinner"></div>
+                        <span id="status-text" class="text-sm font-semibold text-blue-700">Menyediakan enjin OCR...</span>
+                    </div>
+                </div>
+
+                <!-- Result Field -->
+                <div class="space-y-2">
+                    <label for="input-tajuk" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        <span>HASIL IMBASAN (TAJUK)</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" id="input-tajuk" 
+                               placeholder="Teks akan muncul di sini secara automatik..."
+                               class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-medium placeholder:text-slate-400 focus:border-blue-500 focus:ring-0 outline-none transition-all">
+                        <button onclick="copyToClipboard()" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-blue-600 transition-colors">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="flex items-center my-4">
-            <div class="flex-grow border-t border-gray-300"></div>
-            <span class="px-3 text-gray-500 text-sm">ATAU</span>
-            <div class="flex-grow border-t border-gray-300"></div>
-        </div>
-
-        <!-- Bahagian Input Fail -->
-        <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Muat Naik Gambar</label>
-            <input type="file" id="gambar-input" accept="image/*" 
-                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-        </div>
-
-        <!-- Indikator Loading -->
-        <div id="status-container" class="flex items-center space-x-3 mb-4 hidden">
-            <div class="loader" id="loading-spinner"></div>
-            <p id="status-text" class="text-sm text-blue-600 font-medium">Sedia...</p>
-        </div>
-
-        <hr class="my-6">
-
-        <!-- Bahagian Tajuk yang Akan Diisi Otomatis -->
-        <div class="mb-4">
-            <label for="input-tajuk" class="block text-sm font-medium text-gray-700 mb-1">Tajuk Teks Terkesan</label>
-            <input type="text" id="input-tajuk" placeholder="Hasil OCR akan muncul di sini..."
-                   class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-        </div>
-
-        <p class="text-xs text-gray-500 italic text-center">Nota: Menggunakan kamera belakang untuk ketepatan imej yang lebih baik.</p>
+        <p class="text-center text-slate-400 text-xs mt-8 uppercase tracking-widest font-semibold">
+            Powered by Tesseract.js & Tailwind CSS
+        </p>
     </div>
 
     <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
         const video = document.getElementById('camera-preview');
         const canvas = document.getElementById('capture-canvas');
         const btnStart = document.getElementById('btn-start-camera');
         const btnSnap = document.getElementById('btn-snap');
+        const cameraPlaceholder = document.getElementById('camera-placeholder');
+        const cameraOverlay = document.getElementById('camera-overlay');
         
         const inputGambar = document.getElementById('gambar-input');
         const inputTajuk = document.getElementById('input-tajuk');
@@ -86,15 +143,12 @@
 
         let stream = null;
 
-        // Fungsi Membuka Kamera Belakang
         btnStart.addEventListener('click', async () => {
             try {
-                // Set facingMode ke 'environment' untuk kamera belakang
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: { exact: "environment" } }, 
                     audio: false 
                 }).catch(async () => {
-                    // Fallback jika 'exact' tidak disokong atau gagal
                     return await navigator.mediaDevices.getUserMedia({ 
                         video: { facingMode: "environment" }, 
                         audio: false 
@@ -104,49 +158,44 @@
                 video.srcObject = stream;
                 btnStart.classList.add('hidden');
                 btnSnap.classList.remove('hidden');
-                video.classList.remove('mirror'); // Pastikan tiada kesan mirror
+                cameraPlaceholder.classList.add('hidden');
+                cameraOverlay.classList.remove('hidden');
             } catch (err) {
                 console.error("Ralat akses kamera: ", err);
-                alert("Tidak dapat mengakses kamera belakang. Sila pastikan peranti anda mempunyai kamera belakang dan kebenaran telah diberikan.");
+                alert("Ralat: Kamera belakang tidak dijumpai atau akses dinafikan.");
             }
         });
 
-        // Fungsi Mengambil Gambar (Snap)
         btnSnap.addEventListener('click', () => {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
-            
-            // Tiada pembetulan mirror diperlukan untuk kamera belakang
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // Tukar canvas ke DataURL
             const dataUrl = canvas.toDataURL('image/jpeg');
             prosesOCR(dataUrl);
             
-            // Tutup kamera
             if(stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
             btnStart.classList.remove('hidden');
             btnSnap.classList.add('hidden');
+            cameraPlaceholder.classList.remove('hidden');
+            cameraOverlay.classList.add('hidden');
             video.srcObject = null;
         });
 
-        // Mendengar perubahan pada input fail
         inputGambar.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
             prosesOCR(file);
         });
 
-        // Fungsi Utama OCR
         function prosesOCR(source) {
             statusContainer.classList.remove('hidden');
             loadingSpinner.style.display = 'block';
-            statusText.classList.replace('text-green-600', 'text-blue-600');
-            statusText.classList.replace('text-red-600', 'text-blue-600');
-            inputTajuk.value = "Sedang memproses...";
+            statusText.innerText = "Mengecam teks...";
+            inputTajuk.value = "";
 
             Tesseract.recognize(
                 source,
@@ -154,22 +203,38 @@
                 { 
                     logger: m => {
                         if(m.status === 'recognizing text') {
-                            statusText.innerText = `Mengecam: ${Math.round(m.progress * 100)}%`;
+                            statusText.innerText = `Memproses: ${Math.round(m.progress * 100)}%`;
                         }
                     } 
                 }
             ).then(({ data: { text } }) => {
-                const cleanText = text.trim().replace(/\n/g, ' ');
+                const cleanText = text.trim().replace(/\n/g, ' ').replace(/\s\s+/g, ' ');
                 inputTajuk.value = cleanText || "Tiada teks dikesan";
                 loadingSpinner.style.display = 'none';
-                statusText.innerText = "Selesai!";
-                statusText.classList.replace('text-blue-600', 'text-green-600');
+                statusText.innerText = "Imbasan berjaya!";
+                setTimeout(() => statusContainer.classList.add('hidden'), 3000);
             }).catch(err => {
                 console.error(err);
-                inputTajuk.value = "";
-                statusText.innerText = "Ralat OCR.";
-                statusText.classList.replace('text-blue-600', 'text-red-600');
+                statusText.innerText = "Ralat semasa memproses.";
+                loadingSpinner.style.display = 'none';
             });
+        }
+
+        function copyToClipboard() {
+            const copyText = document.getElementById("input-tajuk");
+            if (!copyText.value) return;
+            
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            document.execCommand("copy");
+            
+            const originalText = statusText.innerText;
+            statusContainer.classList.remove('hidden');
+            statusText.innerText = "Teks disalin ke papan klip!";
+            setTimeout(() => {
+                statusContainer.classList.add('hidden');
+                statusText.innerText = originalText;
+            }, 2000);
         }
     </script>
 </body>
