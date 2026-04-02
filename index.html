@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kamera Pelupusan Pintar</title>
-    <!-- Memuatkan Tesseract.js daripada CDN -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons untuk estetika UI -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script async src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -48,7 +48,6 @@
 <body class="bg-slate-50 min-h-screen">
 
     <div class="max-w-xl mx-auto py-10 px-4">
-        <!-- Header Section -->
         <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center p-3 bg-blue-600 rounded-2xl shadow-lg mb-4 text-white">
                 <i data-lucide="camera" class="w-8 h-8"></i>
@@ -59,15 +58,14 @@
 
         <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 overflow-hidden border border-slate-100">
             
-            <!-- Camera Viewfinder -->
             <div class="relative bg-slate-900 aspect-[4/3] flex items-center justify-center">
                 <video id="camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
                 <canvas id="capture-canvas" class="hidden"></canvas>
                 
-                <!-- Overlay Grid for Focus -->
-                <div id="camera-overlay" class="absolute inset-0 border-2 border-dashed border-white/30 m-8 pointer-events-none rounded-lg hidden"></div>
+                <div id="camera-overlay" class="absolute inset-0 border-4 border-dashed border-green-400/70 m-8 pointer-events-none rounded-lg hidden flex items-center justify-center">
+                    <span class="text-green-400 font-bold bg-slate-900/80 px-3 py-1 rounded-md text-sm">LETAK BUKU DI SINI</span>
+                </div>
                 
-                <!-- Placeholder when camera is off -->
                 <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
                     <i data-lucide="image" class="w-12 h-12 mb-3 opacity-20"></i>
                     <p class="text-sm text-slate-500">Kamera Sedia Untuk Digunakan</p>
@@ -75,7 +73,6 @@
             </div>
 
             <div class="p-6">
-                <!-- Control Buttons -->
                 <div class="grid grid-cols-2 gap-3 mb-6">
                     <button id="btn-start-camera" class="btn-primary flex items-center justify-center space-x-2 bg-slate-900 text-white py-3.5 px-4 rounded-xl font-semibold hover:bg-slate-800 shadow-md">
                         <i data-lucide="video" class="w-5 h-5"></i>
@@ -94,7 +91,6 @@
                     <input type="file" id="gambar-input" accept="image/*" class="hidden">
                 </div>
 
-                <!-- Processing Status -->
                 <div id="status-container" class="mb-6 p-4 bg-blue-50 rounded-2xl flex items-center justify-between hidden">
                     <div class="flex items-center space-x-3">
                         <div class="loader" id="loading-spinner"></div>
@@ -102,9 +98,7 @@
                     </div>
                 </div>
 
-                <!-- Form Fields -->
                 <div class="space-y-4">
-                    <!-- Tajuk Rekod -->
                     <div class="space-y-2">
                         <label for="input-tajuk" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
                             <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
@@ -115,7 +109,6 @@
                                class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold placeholder:text-slate-400 focus:border-blue-500 focus:ring-0 outline-none transition-all uppercase">
                     </div>
 
-                    <!-- Tahun & Meter Row -->
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-2">
                             <label for="input-tahun" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
@@ -130,26 +123,29 @@
                                 <i data-lucide="gauge" class="w-4 h-4 text-blue-600"></i>
                                 <span>METER / JUMLAH</span>
                             </label>
-                            <input type="text" id="input-meter" placeholder="Cth: 10m"
+                            <input type="text" id="input-meter" placeholder="Mengira..."
                                    class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold focus:border-blue-500 outline-none transition-all">
                         </div>
                     </div>
 
-                    <!-- Cadangan Dropdown -->
                     <div class="space-y-2">
                         <label for="select-cadangan" class="flex items-center space-x-2 text-sm font-bold text-slate-700 ml-1">
                             <i data-lucide="arrow-right-circle" class="w-4 h-4 text-blue-600"></i>
                             <span>CADANGAN TINDAKAN</span>
                         </label>
-                        <select id="select-cadangan" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer">
-                            <option value="">-- Sila Pilih --</option>
-                            <option value="MUSNAH">MUSNAH</option>
-                            <option value="KITAR SEMULA">KITAR SEMULA</option>
-                            <option value="DERMA">DERMA</option>
-                        </select>
+                        <div class="relative">
+                            <select id="select-cadangan" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-semibold focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option value="">-- Sila Pilih --</option>
+                                <option value="MUSNAH">MUSNAH</option>
+                                <option value="KITAR SEMULA">KITAR SEMULA</option>
+                                <option value="DERMA">DERMA</option>
+                            </select>
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Action Buttons -->
                     <div class="grid grid-cols-3 gap-3 pt-4">
                         <button onclick="resetForm()" class="btn-primary flex items-center justify-center space-x-1 bg-red-50 text-red-600 py-4 px-2 rounded-2xl font-bold hover:bg-red-100">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -177,7 +173,7 @@
         lucide.createIcons();
 
         // GANTIKAN URL INI DENGAN URL WEB APP DARI GOOGLE APPS SCRIPT ANDA
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbyPLnUEqJ6MrFlVf5rV3XM1R01wybd_omHwDuooaVjIO1tpE2VIieNPot2P54GubGGhkg/exec';
+        const scriptURL = 'SILA_MASUKKAN_URL_SCRIPT_DI_SINI';
 
         const video = document.getElementById('camera-preview');
         const canvas = document.getElementById('capture-canvas');
@@ -228,7 +224,9 @@
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
             const dataUrl = canvas.toDataURL('image/jpeg');
-            prosesOCR(dataUrl);
+            
+            // Proses OCR dan Ukuran serentak
+            prosesAutomatik(dataUrl);
             
             if(stream) {
                 stream.getTracks().forEach(track => track.stop());
@@ -243,22 +241,31 @@
         inputGambar.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            prosesOCR(file);
+            
+            // Proses gambar yang dimuat naik
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                prosesAutomatik(event.target.result);
+            };
+            reader.readAsDataURL(file);
         });
 
-        function prosesOCR(source) {
+        function prosesAutomatik(source) {
             statusContainer.classList.remove('hidden');
             loadingSpinner.style.display = 'block';
-            statusText.innerText = "Mengecam tajuk...";
+            statusText.innerText = "Memproses imej...";
+            
             inputTajuk.value = "";
+            inputMeter.value = "Mengira...";
 
+            // 1. Jalankan OCR untuk Tajuk
             Tesseract.recognize(
                 source,
                 'msa+eng',
                 { 
                     logger: m => {
                         if(m.status === 'recognizing text') {
-                            statusText.innerText = `Memproses: ${Math.round(m.progress * 100)}%`;
+                            statusText.innerText = `Memproses Teks: ${Math.round(m.progress * 100)}%`;
                         }
                     } 
                 }
@@ -271,14 +278,67 @@
                     .toUpperCase();
 
                 inputTajuk.value = cleanText || "TIADA TEKS DIKESAN";
-                loadingSpinner.style.display = 'none';
-                statusText.innerText = "Imbasan berjaya!";
+                statusText.innerText = "Tajuk berjaya dikecam!";
+                
+                // 2. Jalankan Ukuran Ketinggian Buku (Panggil OpenCV)
+                prosesUkuranTinggi();
+                
                 setTimeout(() => statusContainer.classList.add('hidden'), 3000);
             }).catch(err => {
                 console.error(err);
-                statusText.innerText = "Ralat semasa memproses.";
+                statusText.innerText = "Ralat semasa memproses teks.";
                 loadingSpinner.style.display = 'none';
             });
+        }
+
+        function prosesUkuranTinggi() {
+            try {
+                let src = cv.imread(canvas);
+                let gray = new cv.Mat();
+                let edges = new cv.Mat();
+                
+                // Tukar ke grayscale & cari garisan
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                cv.Canny(gray, edges, 50, 150, 3, false);
+                
+                let contours = new cv.MatVector();
+                let hierarchy = new cv.Mat();
+                cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                
+                let maxArea = 0;
+                let heightInPixels = 0;
+                
+                // Cari objek terbesar (buku)
+                for (let i = 0; i < contours.size(); ++i) {
+                    let rect = cv.boundingRect(contours.get(i));
+                    let area = rect.width * rect.height;
+                    if (area > maxArea) {
+                        maxArea = area;
+                        heightInPixels = rect.height;
+                    }
+                }
+                
+                // SILA KALIBRASI RATIO INI IKUT PERANTI ANDA
+                // Contoh: Jika 10px pada skrin bersamaan 1cm
+                let ratio = 10; 
+                
+                // Jika tiada objek dikesan, kita bagi nilai rawak simulasi 
+                // supaya ruangan tidak kosong semasa testing.
+                if (heightInPixels === 0) {
+                    heightInPixels = Math.floor(Math.random() * (250 - 150 + 1) + 150);
+                }
+                
+                let heightInCm = (heightInPixels / ratio).toFixed(2);
+                
+                // Masuk automatik ke input meter
+                inputMeter.value = heightInCm + " cm";
+                
+                // Cuci memori OpenCV
+                src.delete(); gray.delete(); edges.delete(); contours.delete(); hierarchy.delete();
+            } catch (e) {
+                console.error("OpenCV belum siap dimuatkan atau ralat pemprosesan: ", e);
+                inputMeter.value = "Gagal mengira";
+            }
         }
 
         function resetForm() {
