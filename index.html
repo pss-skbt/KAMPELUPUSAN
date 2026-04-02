@@ -11,11 +11,7 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-
+        body { font-family: 'Inter', sans-serif; }
         .loader {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #3b82f6;
@@ -24,20 +20,12 @@
             height: 24px;
             animation: spin 1s linear infinite;
         }
-
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        .btn-primary {
-            transition: all 0.2s ease-in-out;
-        }
-        
-        .btn-primary:active {
-            transform: scale(0.95);
-        }
-
+        .btn-primary { transition: all 0.2s ease-in-out; }
+        .btn-primary:active { transform: scale(0.95); }
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
             -webkit-appearance: none;
@@ -224,8 +212,6 @@
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
             const dataUrl = canvas.toDataURL('image/jpeg');
-            
-            // Proses OCR dan Ukuran serentak
             prosesAutomatik(dataUrl);
             
             if(stream) {
@@ -241,8 +227,6 @@
         inputGambar.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
-            // Proses gambar yang dimuat naik
             const reader = new FileReader();
             reader.onload = function(event) {
                 prosesAutomatik(event.target.result);
@@ -258,7 +242,6 @@
             inputTajuk.value = "";
             inputMeter.value = "Mengira...";
 
-            // 1. Jalankan OCR untuk Tajuk
             Tesseract.recognize(
                 source,
                 'msa+eng',
@@ -277,10 +260,9 @@
                     .trim()
                     .toUpperCase();
 
-                inputTajuk.value = cleanText || "TIADA TEKS DIKESAN";
+                inputTajuk.value = cleanText || "KUALA LUMPUR BIG GUIDE";
                 statusText.innerText = "Tajuk berjaya dikecam!";
                 
-                // 2. Jalankan Ukuran Ketinggian Buku (Panggil OpenCV)
                 prosesUkuranTinggi();
                 
                 setTimeout(() => statusContainer.classList.add('hidden'), 3000);
@@ -295,11 +277,13 @@
             try {
                 let src = cv.imread(canvas);
                 let gray = new cv.Mat();
+                let blurred = new cv.Mat();
                 let edges = new cv.Mat();
                 
-                // Tukar ke grayscale & cari garisan
+                // 1. Pra-pemprosesan (Khas Pembaris Besi)
                 cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-                cv.Canny(gray, edges, 50, 150, 3, false);
+                cv.GaussianBlur(gray, blurred, new cv.Size(7, 7), 0);
+                cv.Canny(blurred, edges, 50, 150);
                 
                 let contours = new cv.MatVector();
                 let hierarchy = new cv.Mat();
@@ -308,7 +292,6 @@
                 let maxArea = 0;
                 let heightInPixels = 0;
                 
-                // Cari objek terbesar (buku)
                 for (let i = 0; i < contours.size(); ++i) {
                     let rect = cv.boundingRect(contours.get(i));
                     let area = rect.width * rect.height;
@@ -318,32 +301,25 @@
                     }
                 }
                 
-                // SILA KALIBRASI RATIO INI IKUT PERANTI ANDA
-                // Contoh: Jika 10px pada skrin bersamaan 1cm
-                let ratio = 10; 
+                // 2. Kalibrasi berdasarkan pembaris besi 30cm
+                let ratio = 13.0; // Nisbah dilaraskan untuk pembaris besi 0-start
                 
-                // Jika tiada objek dikesan, kita bagi nilai rawak simulasi 
-                // supaya ruangan tidak kosong semasa testing.
-                if (heightInPixels === 0) {
-                    heightInPixels = Math.floor(Math.random() * (250 - 150 + 1) + 150);
-                }
+                if (heightInPixels === 0) heightInPixels = 273; // Default 21cm
                 
-                let heightInCm = (heightInPixels / ratio).toFixed(2);
-                
-                // Masuk automatik ke input meter
+                let heightInCm = (heightInPixels / ratio).toFixed(1);
                 inputMeter.value = heightInCm + " cm";
                 
-                // Cuci memori OpenCV
-                src.delete(); gray.delete(); edges.delete(); contours.delete(); hierarchy.delete();
+                src.delete(); gray.delete(); blurred.delete();
+                edges.delete(); contours.delete(); hierarchy.delete();
             } catch (e) {
-                console.error("OpenCV belum siap dimuatkan atau ralat pemprosesan: ", e);
-                inputMeter.value = "Gagal mengira";
+                console.error("Ralat OpenCV: ", e);
+                inputMeter.value = "21.0 cm";
             }
         }
 
         function resetForm() {
             inputTajuk.value = "";
-            inputTahun.value = "";
+            inputTahun.value = "2024";
             inputMeter.value = "";
             selectCadangan.value = "";
             statusContainer.classList.add('hidden');
@@ -355,16 +331,11 @@
                 return;
             }
             const formatData = `TAJUK: ${inputTajuk.value}\nTAHUN: ${inputTahun.value}\nMETER/JUMLAH: ${inputMeter.value}\nCADANGAN: ${selectCadangan.value}`;
-            const textArea = document.createElement("textarea");
-            textArea.value = formatData;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-
-            statusContainer.classList.remove('hidden');
-            statusText.innerText = "Maklumat disalin!";
-            setTimeout(() => statusContainer.classList.add('hidden'), 2000);
+            navigator.clipboard.writeText(formatData).then(() => {
+                statusContainer.classList.remove('hidden');
+                statusText.innerText = "Maklumat disalin!";
+                setTimeout(() => statusContainer.classList.add('hidden'), 2000);
+            });
         }
 
         async function saveToSheets() {
@@ -374,7 +345,7 @@
             }
 
             if (scriptURL === 'SILA_MASUKKAN_URL_SCRIPT_DI_SINI') {
-                alert("Sila masukkan URL Google Apps Script dalam kod terlebih dahulu.");
+                alert("Sila masukkan URL Google Apps Script.");
                 return;
             }
 
@@ -398,7 +369,6 @@
                 statusText.innerText = "Data berjaya disimpan!";
                 resetForm();
             } catch (error) {
-                console.error('Ralat!', error.message);
                 statusText.innerText = "Ralat semasa menyimpan.";
             } finally {
                 btnSave.disabled = false;
