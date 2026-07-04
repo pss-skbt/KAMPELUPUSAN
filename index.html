@@ -2,1439 +2,754 @@
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DISPOSA ONE</title>
 
     <!-- ===== PWA / "install as app" support (Android + iOS) ===== -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#312e81">
-    <!-- iOS "Add to Home Screen" behaviour -->
+    <meta name="theme-color" content="#1d4ed8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DISPOSA ONE">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <link rel="icon" href="icon-192.png">
 
+    <!-- Icon untuk Add to Home Screen -->
+    <link rel="apple-touch-icon" sizes="120x120" href="icon120.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icon152.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="icon167.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon180.png">
+    <link rel="icon" type="image/png" sizes="180x180" href="icon180.png">
+
+    <!-- Memuatkan Tesseract.js daripada CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Lucide Icons untuk estetika UI -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .sidebar-item:hover { background-color: rgba(255,255,255,0.1); }
-        .active-tab { background-color: rgba(255,255,255,0.2); border-left: 4px solid #fff; }
-        .logo-preview-box { width:120px;height:120px;border:2px dashed #cbd5e1;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc; }
-        .logo-preview-box img { max-width:100%;max-height:100%;object-fit:contain; }
-        .mnav-item { color: #a5b4fc; }
-        @media (max-width: 767px) {
-            main { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .btn-primary {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            touch-action: manipulation;
+        }
+        
+        .btn-primary:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input, select, button, textarea {
+            font-size: 16px !important;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .animate-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Kotak Fokus Kamera */
+        .camera-frame {
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            right: 10%;
+            bottom: 10%;
+            pointer-events: none;
+        }
+        .frame-corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-color: rgba(255, 255, 255, 0.8);
+            border-width: 4px;
+        }
+        .corner-tl { top: 0; left: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 12px; }
+        .corner-tr { top: 0; right: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 12px; }
+        .corner-bl { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 12px; }
+        .corner-br { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 12px; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-slate-50 min-h-screen text-slate-900">
 
-<!-- Login -->
-<div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-indigo-950 px-4">
-    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border border-indigo-800">
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 text-indigo-900 rounded-full mb-4">
-                <i class="fas fa-camera text-2xl"></i>
-            </div>
-            <h1 class="text-2xl font-bold text-gray-900">DISPOSA ONE</h1>
-            <p class="text-sm text-gray-500 mt-2">DISPOSA ONE — PSS SK Bukit Tongkat</p>
-        </div>
-        <form id="login-form" onsubmit="handleLogin(event)" class="space-y-6">
-            <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Nama Penuh Guru</label>
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-user"></i></span>
-                    <input type="text" id="username" required autocomplete="name" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="cth: Ahmad bin Ali">
+    <!-- ===== LOG MASUK (nama penuh sahaja, tiada kata laluan) ===== -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 px-4">
+        <div class="bg-white p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-2xl mb-4 shadow-lg">
+                    <i data-lucide="camera" class="w-7 h-7"></i>
                 </div>
+                <h1 class="text-2xl font-extrabold tracking-tight uppercase">DISPOSA ONE</h1>
+                <p class="text-sm text-slate-500 mt-2 font-medium">Kamera Laporan Kerosakan dan Pelupusan</p>
             </div>
-            <div id="login-error" class="hidden text-red-500 text-xs font-semibold text-center bg-red-50 py-2 rounded">Sila taip nama penuh anda.</div>
-            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-lg transition-all">MASUK SISTEM</button>
-        </form>
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Nama Penuh Guru</label>
+                    <input type="text" id="login-nama" required autocomplete="name" placeholder="cth: Ahmad bin Ali" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all">
+                </div>
+                <div id="login-error" class="hidden text-rose-600 text-xs font-bold text-center bg-rose-50 py-2 rounded-xl">Sila taip nama penuh anda.</div>
+                <button type="submit" class="btn-primary w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg uppercase tracking-tight">Masuk Sistem</button>
+            </form>
+        </div>
     </div>
-</div>
 
-<!-- Main App -->
-<div id="main-app" class="hidden flex h-screen overflow-hidden">
-    <aside class="w-64 bg-indigo-900 text-white flex-shrink-0 hidden md:flex flex-col">
-        <div class="p-6">
-            <h1 class="text-xl font-bold tracking-wider flex items-center gap-2"><i class="fas fa-camera"></i> DISPOSA ONE</h1>
-            <p id="sidebar-nama-guru" class="text-xs text-indigo-300 mt-1 truncate">PSS SKBT</p>
+    <!-- ===== APP (disembunyikan sehingga log masuk) ===== -->
+    <div id="app-root" class="hidden">
+
+    <!-- MAIN VIEW -->
+    <div id="main-view" class="w-full max-w-2xl mx-auto py-6 md:py-10 px-4">
+        <div class="flex justify-end max-w-2xl mx-auto -mb-2">
+            <button onclick="handleLogout()" class="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-rose-600 py-2 px-3">
+                <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Keluar (<span id="nama-guru-label">Guru</span>)
+            </button>
         </div>
-        <nav class="mt-6 flex-1">
-            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="sidebar-item active-tab w-full flex items-center px-6 py-4 transition-colors"><i class="fas fa-th-large mr-3"></i> Dashboard</button>
-            <button onclick="switchTab('surat')" id="btn-surat" class="sidebar-item w-full flex items-center px-6 py-4 transition-colors"><i class="fas fa-envelope mr-3"></i> Jana Surat Iringan</button>
-            <button onclick="switchTab('borang')" id="btn-borang" class="sidebar-item w-full flex items-center px-6 py-4 transition-colors"><i class="fas fa-file-alt mr-3"></i> Jana Borang 9/08</button>
-            <button onclick="switchTab('borang2')" id="btn-borang2" class="sidebar-item w-full flex items-center px-6 py-4 transition-colors"><i class="fas fa-file-signature mr-3"></i> Jana Borang 2/08</button>
-            <button onclick="switchTab('borang12')" id="btn-borang12" class="sidebar-item w-full flex items-center px-6 py-4 transition-colors"><i class="fas fa-stamp mr-3"></i> Jana Borang 12/08</button>
-            <button onclick="switchTab('list')" id="btn-list" class="sidebar-item w-full flex items-center px-6 py-4 transition-colors"><i class="fas fa-list mr-3"></i> Senarai Rekod</button>
-        </nav>
-        <div class="p-4 border-t border-indigo-800">
-            <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 py-3 text-red-300 hover:text-red-100 hover:bg-red-900/30 rounded-lg transition-all font-semibold"><i class="fas fa-sign-out-alt"></i> Keluar Sistem</button>
+        <div class="text-center mb-6 md:mb-8">
+            <div class="inline-flex items-center justify-center p-3 bg-blue-600 rounded-2xl shadow-lg mb-4 text-white">
+                <i data-lucide="camera" class="w-7 h-7 md:w-8 md:h-8"></i>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight px-2 uppercase">DISPOSA ONE</h1>
+            <p class="text-slate-500 mt-2 font-medium text-sm md:text-base">Kamera Laporan Kerosakan dan Pelupusan</p>
         </div>
-    </aside>
 
-    <main class="flex-1 overflow-y-auto">
-        <header class="bg-white shadow-sm border-b px-8 py-4 flex justify-between items-center sticky top-0 z-10">
-            <h2 id="tab-title" class="text-xl font-semibold text-gray-700">Dashboard</h2>
-            <div id="current-date" class="text-xs text-gray-500 font-medium"></div>
-        </header>
-
-        <div class="p-8">
-            <!-- Dashboard -->
-            <div id="view-dashboard" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border">
-                    <p class="text-sm text-gray-500 font-medium uppercase">Jumlah Rekod Tersimpan</p>
-                    <h3 id="stat-total" class="text-3xl font-bold mt-1">0</h3>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border">
-                    <p class="text-sm text-gray-500 font-medium uppercase">Sesi Pengguna</p>
-                    <h3 id="stat-sesi-nama" class="text-xl font-bold mt-1 text-indigo-600 truncate">Guru</h3>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border">
-                    <p class="text-sm text-gray-500 font-medium uppercase">Status Sistem</p>
-                    <h3 class="text-3xl font-bold mt-1 text-green-500">AKTIF</h3>
+        <div class="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/60 overflow-hidden border border-slate-100 glass-effect">
+            <div class="relative bg-slate-900 aspect-[4/3] flex items-center justify-center overflow-hidden">
+                <video id="camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
+                <canvas id="capture-canvas" class="hidden"></canvas>
+                <div id="camera-overlay" class="absolute inset-0 border-2 border-dashed border-white/20 m-6 md:m-12 pointer-events-none rounded-2xl hidden"></div>
+                <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+                    <div class="bg-slate-800/50 p-5 rounded-full mb-4">
+                        <i data-lucide="image" class="w-10 h-10 opacity-40"></i>
+                    </div>
+                    <p class="text-sm font-medium text-slate-500">Sedia Untuk Imbasan</p>
                 </div>
             </div>
 
-            <!-- Surat Iringan -->
-            <div id="view-surat" class="hidden">
-                <div class="max-w-4xl mx-auto space-y-6">
-                    <div class="bg-white p-8 rounded-xl shadow-sm border">
-                        <h3 class="text-lg font-bold mb-6 border-b pb-2 flex items-center text-indigo-900"><i class="fas fa-image mr-2 text-indigo-600"></i> Tetapan Kepala Surat & Logo</h3>
-                        <div class="flex flex-col md:flex-row gap-8 items-start">
-                            <div class="flex flex-col items-center gap-4">
-                                <div id="logo-preview-container" class="logo-preview-box shadow-inner"><span class="text-gray-400 text-[10px] text-center px-2">Tiada Logo Sekolah</span></div>
-                                <div class="flex flex-col gap-2 w-full">
-                                    <label class="text-center text-[12px] bg-indigo-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-indigo-700 transition-all font-bold">
-                                        <input type="file" id="school-logo-input" accept="image/*" class="hidden" onchange="previewLogo(event)"> Muat Naik Logo
-                                    </label>
-                                    <button onclick="removeLogo()" class="text-[11px] text-red-500 hover:bg-red-50 py-1 rounded border border-red-100 font-medium">Padam Logo</button>
-                                </div>
-                            </div>
-                            <div class="flex-1 grid grid-cols-1 gap-5 w-full">
-                                <div class="bg-gray-50 p-4 rounded-lg border">
-                                    <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Nama Sekolah (Kepala Surat)</label>
-                                    <input type="text" id="h_nama_sekolah" value="SEKOLAH KEBANGSAAN BUKIT TONGKAT" class="w-full p-3 bg-white border border-gray-300 rounded-lg uppercase font-bold text-gray-700">
-                                </div>
-                                <div class="bg-gray-50 p-4 rounded-lg border">
-                                    <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Alamat Penuh Sekolah</label>
-                                    <textarea id="h_alamat_sekolah" class="w-full p-3 bg-white border border-gray-300 rounded-lg text-sm" rows="3">JKR 548, JALAN MERSING, 86000 KLUANG, JOHOR</textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-8 rounded-xl shadow-sm border">
-                        <h3 class="text-lg font-bold mb-6 border-b pb-2 text-indigo-900 flex items-center"><i class="fas fa-edit mr-2 text-indigo-600"></i> Kandungan Surat Iringan</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            <div class="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
-                                <label class="text-xs font-bold text-indigo-400 uppercase mb-2 block">No. Rujukan Fail</label>
-                                <input type="text" id="s_no_rujukan" value="SKBT/PSS/2024/01" class="w-full p-3 bg-white border border-indigo-200 rounded-lg font-medium">
-                            </div>
-                            <div class="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
-                                <label class="text-xs font-bold text-indigo-400 uppercase mb-2 block">Tarikh Surat</label>
-                                <input type="date" id="s_tarikh_surat" class="w-full p-3 bg-white border border-indigo-200 rounded-lg">
-                            </div>
-                        </div>
-                        <div class="space-y-6 mb-10">
-                            <div class="relative"><label class="text-[10px] font-bold text-gray-400 uppercase absolute -top-2 left-4 bg-white px-2 z-10">Perenggan 1</label><textarea class="s-perenggan w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm" rows="2">Dengan hormatnya perkara di atas dirujuk.</textarea></div>
-                            <div class="relative"><label class="text-[10px] font-bold text-gray-400 uppercase absolute -top-2 left-4 bg-white px-2 z-10">Perenggan 2</label><textarea class="s-perenggan w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm" rows="4">Bersama-sama ini dikemukakan Borang Permohonan Pelupusan Rekod Terbitan dan Bahan Bercetak (Borang 9 - Arkib 9/08) sebanyak 1 salinan bagi tujuan permohonan pelupusan bahan-bahan di Pusat Sumber Sekolah (PSS) yang telah uzur dan rosak.</textarea></div>
-                            <div class="relative"><label class="text-[10px] font-bold text-gray-400 uppercase absolute -top-2 left-4 bg-white px-2 z-10">Perenggan 3</label><textarea class="s-perenggan w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm" rows="3" placeholder="Sila isi perenggan 3 jika perlu..."></textarea></div>
-                        </div>
-                        <div class="bg-gray-50 p-6 rounded-xl border mb-8 space-y-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label class="text-[10px] font-bold text-indigo-900 mb-1 block">Penutup Utama</label><input type="text" id="s_sekian" value="Sekian, terima kasih." class="w-full p-3 bg-white border rounded-lg"></div>
-                                <div><label class="text-[10px] font-bold text-indigo-900 mb-1 block">Slogan 1</label><input type="text" id="s_madani" value="MALAYSIA MADANI" class="w-full p-3 bg-white border rounded-lg uppercase"></div>
-                                <div><label class="text-[10px] font-bold text-indigo-900 mb-1 block">Slogan 2</label><input type="text" id="s_khidmat" value="BERKHIDMAT UNTUK NEGARA" class="w-full p-3 bg-white border rounded-lg uppercase"></div>
-                                <div><label class="text-[10px] font-bold text-indigo-900 mb-1 block">Frasa Pengakuan</label><input type="text" id="s_amanah" value="Saya yang menjalankan amanah," class="w-full p-3 bg-white border rounded-lg"></div>
-                            </div>
-                            <hr>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div><label class="text-[10px] font-bold mb-1 block">Nama Pegawai</label><input type="text" id="s_nama_gb" value="NAMA GURU BESAR" class="w-full p-3 bg-white border rounded-lg font-bold uppercase"></div>
-                                <div><label class="text-[10px] font-bold mb-1 block">Jawatan</label><input type="text" id="s_jawatan_gb" value="Guru Besar" class="w-full p-3 bg-white border rounded-lg"></div>
-                                <div><label class="text-[10px] font-bold mb-1 block">Nama Sekolah</label><input type="text" id="s_nama_sekolah_cap" value="Sekolah Kebangsaan Bukit Tongkat" class="w-full p-3 bg-white border rounded-lg"></div>
-                            </div>
-                        </div>
-                        <div class="flex justify-end gap-4">
-                            <button onclick="saveRecord('surat')" class="bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700"><i class="fas fa-save"></i> Simpan Rekod</button>
-                            <button onclick="downloadSuratPDF()" class="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"><i class="fas fa-file-pdf"></i> Jana Surat PDF</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Borang 9/08 -->
-            <div id="view-borang" class="hidden">
-                <div class="max-w-6xl mx-auto space-y-6">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border">
-                        <div class="mb-3">
-                            <h3 class="text-indigo-900 font-bold text-lg">Import Data Automatik</h3>
-                            <p class="text-gray-500 text-xs">Tarik data dari Google Sheets, muat naik CSV, atau tambah baris manual.</p>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <input type="text" id="gsheet-url-borang" placeholder="Tampal link CSV Google Sheets di sini..." class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-400" style="min-width:200px">
-                            <button onclick="fetchGSheetCSV('borang')" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm whitespace-nowrap">
-                                <i class="fas fa-cloud-download-alt"></i> Tarik Data
-                            </button>
-                            <label class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm cursor-pointer whitespace-nowrap">
-                                <i class="fas fa-file-upload"></i> Muat Naik CSV
-                                <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="handleCSVUpload(event,'borang')">
-                            </label>
-                        </div>
-                        <p class="text-[10px] text-gray-400 mt-2">💡 Cara dapatkan link: Google Sheets → Fail → Kongsi → Terbitkan ke web → pilih CSV → salin link</p>
-                    </div>
-                    <div class="bg-white p-8 rounded-xl shadow-sm border">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-bold text-indigo-900">Borang 9 (Arkib 9/08) — Rekod Terbitan & Bahan Bercetak</h3>
-                            <span id="row-count" class="text-xs font-bold text-gray-400 bg-gray-50 px-3 py-1 rounded-full border">0 rekod</span>
-                        </div>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-indigo-50 p-4 rounded-xl border">
-                            <div><label class="text-[10px] font-bold text-indigo-400 uppercase block mb-1">(1) Kementerian/Jabatan/Agensi</label><input type="text" id="b_jabatan" value="SK BUKIT TONGKAT" class="p-2 bg-white border rounded text-sm w-full uppercase font-bold"></div>
-                            <div><label class="text-[10px] font-bold text-indigo-400 uppercase block mb-1">(2) Bahagian/Cawangan/Unit</label><input type="text" id="b_bahagian" value="PUSAT SUMBER SEKOLAH" class="p-2 bg-white border rounded text-sm w-full uppercase font-bold"></div>
-                            <div><label class="text-[10px] font-bold text-indigo-400 uppercase block mb-1">(3) Pewujud Rekod</label><input type="text" id="b_pewujud" value="GURU PERPUSTAKAAN & MEDIA" class="p-2 bg-white border rounded text-sm w-full uppercase font-bold"></div>
-                            <div><label class="text-[10px] font-bold text-indigo-400 uppercase block mb-1">(4) Peringkat Keselamatan</label><input type="text" id="b_keselamatan" value="TERBUKA" class="p-2 bg-white border rounded text-sm w-full uppercase font-bold"></div>
-                        </div>
-                        <div class="overflow-x-auto border rounded-xl mb-4">
-                            <table class="w-full text-sm" id="b_itemsTable">
-                                <thead class="bg-gray-100 uppercase text-[10px]">
-                                    <tr>
-                                        <th class="p-3 border-b text-center w-10">Bil (5)</th>
-                                        <th class="p-3 border-b">Tajuk Rekod (6)</th>
-                                        <th class="p-3 border-b w-28">Tahun/Tarikh Diterbitkan (7)</th>
-                                        <th class="p-3 border-b w-24">Meter Panjang/Jumlah (8)</th>
-                                        <th class="p-3 border-b w-28">Cadangan Pelupusan (9)</th>
-                                        <th class="p-3 border-b w-28">Catatan (10)</th>
-                                        <th class="p-3 border-b w-20 text-center">Foto Kerosakan</th>
-                                        <th class="p-3 border-b w-8"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="b_items-tbody"></tbody>
-                            </table>
-                        </div>
-                        <button onclick="addItem('borang')" class="text-indigo-600 font-bold text-sm bg-indigo-50 px-4 py-2 rounded-lg mb-6">+ Tambah Baris</button>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
-                            <div><label class="text-xs font-bold text-gray-400 uppercase mb-1 block">Nama Pegawai</label><input type="text" id="b_pegawai" class="w-full p-3 bg-gray-50 border rounded-lg font-bold uppercase" placeholder="NAMA PEGAWAI BERTANGGUNGJAWAB"></div>
-                            <div><label class="text-xs font-bold text-gray-400 uppercase mb-1 block">Jawatan</label><input type="text" id="b_jawatan" value="Guru Perpustakaan & Media" class="w-full p-3 bg-gray-50 border rounded-lg"></div>
-                        </div>
-                        <div class="flex justify-end gap-3 mt-8">
-                            <button onclick="saveRecord('borang')" class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700"><i class="fas fa-save"></i> Simpan</button>
-                            <button onclick="downloadBorang9PDF()" class="bg-red-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-red-700"><i class="fas fa-file-pdf"></i> Muat Turun Borang 9/08</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Borang 2/08 -->
-            <div id="view-borang2" class="hidden">
-                <div class="max-w-6xl mx-auto space-y-6">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border">
-                        <div class="mb-3">
-                            <h3 class="text-indigo-900 font-bold text-lg">Import Data Automatik</h3>
-                            <p class="text-gray-500 text-xs">Tarik data dari Google Sheets, muat naik CSV, atau tambah baris manual.</p>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <input type="text" id="gsheet-url-borang2" placeholder="Tampal link CSV Google Sheets di sini..." class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-400" style="min-width:200px">
-                            <button onclick="fetchGSheetCSV('borang2')" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm whitespace-nowrap">
-                                <i class="fas fa-cloud-download-alt"></i> Tarik Data
-                            </button>
-                            <label class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm cursor-pointer whitespace-nowrap">
-                                <i class="fas fa-file-upload"></i> Muat Naik CSV
-                                <input type="file" id="csv-upload-2" accept=".csv" class="hidden" onchange="handleCSVUpload(event,'borang2')">
-                            </label>
-                        </div>
-                        <p class="text-[10px] text-gray-400 mt-2">💡 Cara dapatkan link: Google Sheets → Fail → Kongsi → Terbitkan ke web → pilih CSV → salin link</p>
-                    </div>
-                    <div class="bg-white p-8 rounded-xl shadow-sm border">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-bold text-indigo-900">Borang 2 (Arkib 2/08) — Rekod Awam Am</h3>
-                            <span id="row-count-2" class="text-xs font-bold text-gray-400 bg-gray-50 px-3 py-1 rounded-full border">0 rekod</span>
-                        </div>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-indigo-50 p-4 rounded-xl border">
-                            <div><label class="text-[10px] font-bold text-indigo-400 uppercase block mb-1">(1) Kementerian/Jabatan/Agensi</label><input type="text" id="b2_jabatan" value="SK BUKIT TONGKAT" class="p-2 bg-white border rounded text-sm w-full uppercase font-bold"></div>
-                            <div><label class="text-[10px] font-bold text-indigo-400 uppercase block mb-1">(2) Bahagian/Cawangan/Unit</label><input type="text" id="b2_bahagian" value="PUSAT SUMBER SEKOLAH" class="p-2 bg-white border rounded text-sm w-full uppercase font-bold"></div>
-                            <div><label class="text-[10px] font-bold text-indigo-400 uppercase block mb-1">(3) Pewujud Rekod</label><input type="text" id="b2_pewujud" value="GURU PERPUSTAKAAN & MEDIA" class="p-2 bg-white border rounded text-sm w-full uppercase font-bold"></div>
-                            <div><label class="text-[10px] font-bold text-indigo-400 uppercase block mb-1">Jadual Pelupusan</label><input type="text" id="b2_jadual" value="Jadual Pelupusan Rekod Urusan Am" class="p-2 bg-white border rounded text-sm w-full"></div>
-                        </div>
-                        <div class="overflow-x-auto border rounded-xl mb-4">
-                            <table class="w-full text-sm">
-                                <thead class="bg-gray-100 uppercase text-[10px]">
-                                    <tr>
-                                        <th class="p-3 border-b text-center w-10" rowspan="2">Bil (5)</th>
-                                        <th class="p-3 border-b" rowspan="2">Tajuk Siri Rekod (6)</th>
-                                        <th class="p-3 border-b text-center" colspan="2">Tahun Diliputi (7)</th>
-                                        <th class="p-3 border-b w-32" rowspan="2">Tempoh Pengekalan (8)</th>
-                                        <th class="p-3 border-b w-24" rowspan="2">Unit Rekod (9)</th>
-                                        <th class="p-3 border-b w-24" rowspan="2">Meter Panjang (10)</th>
-                                        <th class="p-3 border-b w-8" rowspan="2"></th>
-                                    </tr>
-                                    <tr class="bg-gray-200 text-[9px]">
-                                        <th class="p-2 border-b text-center w-20">Daripada</th>
-                                        <th class="p-2 border-b text-center w-20">Kepada</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="b2_items-tbody"></tbody>
-                            </table>
-                        </div>
-                        <button onclick="addItem('borang2')" class="text-indigo-600 font-bold text-sm bg-indigo-50 px-4 py-2 rounded-lg mb-6">+ Tambah Baris</button>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
-                            <div><label class="text-xs font-bold text-gray-400 uppercase mb-1 block">Nama Pegawai</label><input type="text" id="b2_pegawai" class="w-full p-3 bg-gray-50 border rounded-lg font-bold uppercase" placeholder="NAMA PEGAWAI BERTANGGUNGJAWAB"></div>
-                            <div><label class="text-xs font-bold text-gray-400 uppercase mb-1 block">Jawatan</label><input type="text" id="b2_jawatan" value="Guru Perpustakaan & Media" class="w-full p-3 bg-gray-50 border rounded-lg"></div>
-                        </div>
-                        <div class="flex justify-end gap-3 mt-8">
-                            <button onclick="saveRecord('borang2')" class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700"><i class="fas fa-save"></i> Simpan</button>
-                            <button onclick="downloadBorang2PDF()" class="bg-red-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-red-700"><i class="fas fa-file-pdf"></i> Muat Turun Borang 2/08</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Borang 12/08 -->
-            <div id="view-borang12" class="hidden">
-                <div class="max-w-3xl mx-auto space-y-6">
-                    <div class="bg-white p-8 rounded-xl shadow-sm border">
-                        <h3 class="text-xl font-bold text-indigo-900 mb-1">Borang 12 (Arkib 12/08)</h3>
-                        <p class="text-gray-500 text-sm mb-6 border-b pb-4">Penentusahan Pemusnahan Rekod Awam</p>
-
-                        <!-- BAHAGIAN A: Butir Jabatan -->
-                        <div class="mb-6">
-                            <h4 class="text-xs font-bold text-indigo-400 uppercase mb-3 tracking-wider">Butir-Butir Jabatan</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(1) Kementerian/Jabatan/Agensi</label><input type="text" id="b12_jabatan" value="SK BUKIT TONGKAT" class="w-full p-3 bg-gray-50 border rounded-lg text-sm uppercase font-bold"></div>
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(2) Bahagian/Cawangan/Unit</label><input type="text" id="b12_bahagian" value="PUSAT SUMBER SEKOLAH" class="w-full p-3 bg-gray-50 border rounded-lg text-sm uppercase font-bold"></div>
-                            </div>
-                        </div>
-
-                        <!-- BAHAGIAN B: Maklumat Rekod -->
-                        <div class="mb-6">
-                            <h4 class="text-xs font-bold text-indigo-400 uppercase mb-3 tracking-wider">Maklumat Mengenai Rekod</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(3.1) No. Rujukan Surat Kebenaran Pemusnahan</label><input type="text" id="b12_no_rujukan" class="w-full p-3 bg-gray-50 border rounded-lg text-sm" placeholder="cth: AN/100-2/1/9"></div>
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(3.2) Tarikh Surat Kebenaran</label><input type="date" id="b12_tarikh_surat" class="w-full p-3 bg-gray-50 border rounded-lg text-sm"></div>
-                            </div>
-                            <div class="mb-4"><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(4) Perihal Rekod</label><textarea id="b12_perihal" rows="3" class="w-full p-3 bg-gray-50 border rounded-lg text-sm" placeholder="Huraian ringkas rekod yang dimusnahkan..."></textarea></div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(5) Meter Panjang Rekod Yang Dimusnahkan</label><input type="text" id="b12_meter" value="0.01" class="w-full p-3 bg-gray-50 border rounded-lg text-sm"></div>
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(6) Peringkat Keselamatan</label><input type="text" id="b12_keselamatan" value="TERBUKA" class="w-full p-3 bg-gray-50 border rounded-lg text-sm uppercase"></div>
-                            </div>
-                            <!-- Kaedah Pemusnahan -->
-                            <div class="mb-4">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">(7) Kaedah Pemusnahan</label>
-                                <div class="flex flex-wrap gap-3 p-4 bg-gray-50 border rounded-lg">
-                                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="b12_bakar" class="w-4 h-4 rounded text-indigo-600"><span class="text-sm font-medium">Dibakar</span></label>
-                                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="b12_rincih" class="w-4 h-4 rounded text-indigo-600"><span class="text-sm font-medium">Dirincih</span></label>
-                                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="b12_kitar" class="w-4 h-4 rounded text-indigo-600"><span class="text-sm font-medium">Dikitar Semula</span></label>
-                                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="b12_padam" class="w-4 h-4 rounded text-indigo-600"><span class="text-sm font-medium">Dipadamkan</span></label>
-                                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="b12_jual" class="w-4 h-4 rounded text-indigo-600"><span class="text-sm font-medium">Dijual</span></label>
-                                    <div class="flex items-center gap-2 ml-2">
-                                        <span class="text-sm text-gray-500">No. Resit (Jika Dijual):</span>
-                                        <input type="text" id="b12_no_resit" class="p-1 px-2 border rounded text-sm w-32" placeholder="No. Resit...">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(8) Tarikh Pemusnahan</label><input type="date" id="b12_tarikh_musnah" class="w-full p-3 bg-gray-50 border rounded-lg text-sm"></div>
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(9) Tempat Pemusnahan</label><input type="text" id="b12_tempat" class="w-full p-3 bg-gray-50 border rounded-lg text-sm" placeholder="cth: Premis sekolah"></div>
-                            </div>
-                        </div>
-
-                        <!-- BAHAGIAN C: Pegawai Yang Melaksanakan -->
-                        <div class="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                            <h4 class="text-xs font-bold text-blue-400 uppercase mb-3 tracking-wider">Pegawai Yang Melaksanakan Pemusnahan</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(10) Nama Pegawai</label><input type="text" id="b12_nama_pelaksana" class="w-full p-3 bg-white border rounded-lg text-sm font-bold uppercase" placeholder="NAMA PEGAWAI PELAKSANA"></div>
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Jawatan Pegawai</label><input type="text" id="b12_jawatan_pelaksana" value="Guru Perpustakaan & Media" class="w-full p-3 bg-white border rounded-lg text-sm"></div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">(11) Nama Saksi</label><input type="text" id="b12_nama_saksi" class="w-full p-3 bg-white border rounded-lg text-sm font-bold uppercase" placeholder="NAMA SAKSI"></div>
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Jawatan Saksi</label><input type="text" id="b12_jawatan_saksi" class="w-full p-3 bg-white border rounded-lg text-sm" placeholder="Jawatan Saksi"></div>
-                            </div>
-                        </div>
-
-                        <!-- BAHAGIAN D: Penentusahan -->
-                        <div class="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
-                            <h4 class="text-xs font-bold text-amber-600 uppercase mb-2 tracking-wider">Penentusahan (12)</h4>
-                            <p class="text-xs text-gray-500 mb-4 italic">Saya mengesahkan bahawa rekod di atas telah dimusnahkan dengan sewajarnya mengikut Seksyen 25 dan 26, Akta Arkib Negara 2003 [Akta 629].</p>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nama Pegawai Pengesah</label><input type="text" id="b12_nama_pengesah" class="w-full p-3 bg-white border rounded-lg text-sm font-bold uppercase" placeholder="NAMA PEGAWAI PENGESAH"></div>
-                                <div><label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Jawatan Pengesah</label><input type="text" id="b12_jawatan_pengesah" value="Guru Besar" class="w-full p-3 bg-white border rounded-lg text-sm"></div>
-                            </div>
-                        </div>
-
-                        <!-- BAHAGIAN E: Foto Bukti Pemusnahan -->
-                        <div class="mb-6 p-4 bg-rose-50 rounded-xl border border-rose-100">
-                            <h4 class="text-xs font-bold text-rose-500 uppercase mb-3 tracking-wider">Foto Bukti Pemusnahan</h4>
-                            <p class="text-xs text-gray-500 mb-4">Ambil gambar semasa proses pemusnahan dilakukan sebagai bukti sokongan (contoh: gambar sebelum, semasa dan selepas dimusnahkan).</p>
-                            <div id="b12-photo-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3"></div>
-                            <label class="inline-flex items-center gap-2 cursor-pointer bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2 rounded-lg">
-                                <i class="fas fa-camera"></i> Ambil / Muat Naik Foto
-                                <input type="file" accept="image/*" capture="environment" multiple class="hidden" onchange="handleB12Photo(event)">
-                            </label>
-                        </div>
-
-                        <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                            <button onclick="saveRecord('borang12')" class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700"><i class="fas fa-save"></i> Simpan</button>
-                            <button onclick="downloadBorang12PDF()" class="bg-red-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-red-700"><i class="fas fa-file-pdf"></i> Muat Turun Borang 12/08</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Senarai Rekod -->
-            <div id="view-list" class="hidden">
-                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-gray-50 uppercase text-[10px] font-bold text-gray-400">
-                            <tr>
-                                <th class="p-5 border-b">Jenis</th>
-                                <th class="p-5 border-b">No Rujukan / Pegawai</th>
-                                <th class="p-5 border-b">Tarikh Simpan</th>
-                                <th class="p-5 border-b text-right">Tindakan</th>
-                            </tr>
-                        </thead>
-                        <tbody id="list-body"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
-</div>
-
-<!-- Mobile bottom navigation -->
-<nav id="mobile-nav" class="md:hidden fixed bottom-0 left-0 right-0 bg-indigo-900 text-white flex justify-around items-stretch z-40 border-t border-indigo-800" style="padding-bottom: env(safe-area-inset-bottom);">
-    <button onclick="switchTab('dashboard')" id="mbtn-dashboard" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-th-large text-lg"></i><span class="text-[9px] font-semibold">Utama</span></button>
-    <button onclick="switchTab('surat')" id="mbtn-surat" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-envelope text-lg"></i><span class="text-[9px] font-semibold">Surat</span></button>
-    <button onclick="switchTab('borang')" id="mbtn-borang" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-file-alt text-lg"></i><span class="text-[9px] font-semibold">B.9</span></button>
-    <button onclick="switchTab('borang2')" id="mbtn-borang2" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-file-signature text-lg"></i><span class="text-[9px] font-semibold">B.2</span></button>
-    <button onclick="switchTab('borang12')" id="mbtn-borang12" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-stamp text-lg"></i><span class="text-[9px] font-semibold">B.12</span></button>
-    <button onclick="switchTab('list')" id="mbtn-list" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-list text-lg"></i><span class="text-[9px] font-semibold">Senarai</span></button>
-</nav>
-
-<!-- Photo lightbox modal -->
-<div id="photo-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6" onclick="closePhotoModal()">
-    <img id="photo-modal-img" src="" class="max-w-full max-h-full rounded-lg shadow-2xl">
-    <button class="absolute top-4 right-4 text-white text-3xl"><i class="fas fa-times-circle"></i></button>
-</div>
-
-<script>
-let records = JSON.parse(localStorage.getItem('pss_records_v5')) || [];
-let schoolLogoBase64 = localStorage.getItem('pss_school_logo') || null;
-
-// Register service worker so the app can be "installed" on Android/iOS home
-// screen and keep working with no signal (e.g. inside a store/library where
-// wifi is patchy while taking damage photos).
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW gagal daftar:', err));
-    });
-}
-
-// ============ AUTH ============
-function handleLogin(e) {
-    e.preventDefault();
-    const nama = document.getElementById('username').value.trim();
-    if (nama.length >= 2) {
-        sessionStorage.setItem('isLoggedIn', 'true');
-        sessionStorage.setItem('namaGuru', nama);
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
-        applyLoggedInName();
-    } else {
-        document.getElementById('login-error').classList.remove('hidden');
-    }
-}
-function handleLogout() { sessionStorage.removeItem('isLoggedIn'); sessionStorage.removeItem('namaGuru'); location.reload(); }
-
-function applyLoggedInName() {
-    const nama = sessionStorage.getItem('namaGuru') || 'Guru';
-    const sesiEl = document.getElementById('stat-sesi-nama');
-    if (sesiEl) sesiEl.innerText = nama;
-    const sidebarNama = document.getElementById('sidebar-nama-guru');
-    if (sidebarNama) sidebarNama.innerText = nama;
-}
-
-window.onload = () => {
-    if (sessionStorage.getItem('isLoggedIn') === 'true') {
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
-        applyLoggedInName();
-    }
-    document.getElementById('current-date').innerText = new Intl.DateTimeFormat('ms-MY', { dateStyle: 'full' }).format(new Date());
-    if (schoolLogoBase64) updateLogoPreview(schoolLogoBase64);
-    addItem('borang');
-    addItem('borang2');
-    updateStats();
-    renderRecords();
-    renderB12Photos();
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('s_tarikh_surat').value = today;
-};
-
-// ============ TABS ============
-function switchTab(tab) {
-    ['dashboard','surat','borang','borang2','borang12','list'].forEach(t => {
-        document.getElementById(`view-${t}`).classList.add('hidden');
-        document.getElementById(`btn-${t}`).classList.remove('active-tab');
-        const m = document.getElementById(`mbtn-${t}`);
-        if (m) m.classList.remove('text-white','bg-indigo-700/50');
-        if (m) m.classList.add('text-indigo-300');
-    });
-    document.getElementById(`view-${tab}`).classList.remove('hidden');
-    document.getElementById(`btn-${tab}`).classList.add('active-tab');
-    const activeM = document.getElementById(`mbtn-${tab}`);
-    if (activeM) { activeM.classList.add('text-white','bg-indigo-700/50'); activeM.classList.remove('text-indigo-300'); }
-    const titles = { dashboard:'Dashboard', surat:'Jana Surat Iringan', borang:'Jana Borang 9/08', borang2:'Jana Borang 2/08', borang12:'Jana Borang 12/08', list:'Senarai Rekod' };
-    document.getElementById('tab-title').innerText = titles[tab] || tab;
-    window.scrollTo(0,0);
-}
-
-// ============ LOGO ============
-function previewLogo(e) {
-    const file = e.target.files[0];
-    if (file) { const r = new FileReader(); r.onload = (re) => { schoolLogoBase64 = re.target.result; localStorage.setItem('pss_school_logo', schoolLogoBase64); updateLogoPreview(schoolLogoBase64); }; r.readAsDataURL(file); }
-}
-function removeLogo() { schoolLogoBase64 = null; localStorage.removeItem('pss_school_logo'); document.getElementById('logo-preview-container').innerHTML = `<span class="text-gray-400 text-[10px] text-center px-2">Tiada Logo Sekolah</span>`; }
-function updateLogoPreview(b) { document.getElementById('logo-preview-container').innerHTML = `<img src="${b}">`; }
-
-// ============ IMAGE COMPRESSION HELPER ============
-// Resizes + compresses a captured photo before storing it, so photos taken
-// on a phone camera (often 3000px+, several MB) don't blow past localStorage limits.
-function compressImage(file, maxDim = 900, quality = 0.65) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                let { width, height } = img;
-                if (width > height && width > maxDim) { height *= maxDim / width; width = maxDim; }
-                else if (height > maxDim) { width *= maxDim / height; height = maxDim; }
-                const canvas = document.createElement('canvas');
-                canvas.width = width; canvas.height = height;
-                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', quality));
-            };
-            img.onerror = reject;
-            img.src = e.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
-function openPhotoModal(src) {
-    document.getElementById('photo-modal-img').src = src;
-    document.getElementById('photo-modal').classList.remove('hidden');
-}
-function closePhotoModal() { document.getElementById('photo-modal').classList.add('hidden'); }
-
-// ============ TABLE ROWS (Borang 9 / Borang 2) ============
-let rowUidCounter = 0;
-
-function addItem(type, data = {}) {
-    if (type === 'borang') {
-        const tbody = document.getElementById('b_items-tbody');
-        const uid = 'r' + (rowUidCounter++);
-        const row = document.createElement('tr');
-        row.dataset.uid = uid;
-        row.dataset.foto = data.foto || '';
-        row.innerHTML = `
-            <td class="p-2 border-b text-center bil-num font-bold text-gray-400">${tbody.rows.length + 1}</td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i-tajuk" value="${data.tajuk || ''}"></td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i-tahun" value="${data.tahun || ''}"></td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i-meter" value="${data.meter || '0.01'}"></td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i-cadangan" value="${data.cadangan || 'MUSNAH'}"></td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i-catatan" value="${data.catatan || 'ROSAK/UZUR'}"></td>
-            <td class="p-2 border-b text-center">
-                <div class="flex flex-col items-center gap-1">
-                    <img class="i-foto-preview w-9 h-9 object-cover rounded border cursor-pointer ${data.foto ? '' : 'hidden'}" src="${data.foto || ''}" onclick="openPhotoModal(this.src)">
-                    <label class="cursor-pointer text-indigo-500 hover:text-indigo-700 text-[10px] font-bold flex items-center gap-1">
-                        <i class="fas fa-camera"></i>
-                        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handleRowPhoto(event,'${uid}','borang')">
+            <div class="p-5 md:p-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                    <button id="btn-start-camera" class="btn-primary flex items-center justify-center space-x-2 bg-slate-900 text-white py-4 px-6 rounded-2xl font-bold hover:bg-slate-800 shadow-lg w-full">
+                        <i data-lucide="video" class="w-5 h-5"></i>
+                        <span>BUKA KAMERA</span>
+                    </button>
+                    <button id="btn-snap" class="btn-primary flex items-center justify-center space-x-2 bg-blue-600 text-white py-4 px-6 rounded-2xl font-bold hover:bg-blue-700 shadow-xl hidden w-full">
+                        <i data-lucide="aperture" class="w-5 h-5"></i>
+                        <span>Ambil gambar</span>
+                    </button>
+                    <label for="gambar-input" class="btn-primary cursor-pointer flex items-center justify-center space-x-2 bg-slate-100 text-slate-700 py-4 px-6 rounded-2xl font-bold hover:bg-slate-200 w-full">
+                        <i data-lucide="upload" class="w-5 h-5"></i>
+                        <span>MUAT NAIK FAIL</span>
                     </label>
+                    <input type="file" id="gambar-input" accept="image/*" class="hidden">
                 </div>
-            </td>
-            <td class="p-2 border-b"><button onclick="this.parentElement.parentElement.remove();updateBil('borang');" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>`;
-        tbody.appendChild(row);
-        updateBil('borang');
-    } else {
-        const tbody = document.getElementById('b2_items-tbody');
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td class="p-2 border-b text-center bil-num font-bold text-gray-400">${tbody.rows.length + 1}</td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i2-tajuk" value="${data.tajuk || ''}"></td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i2-dari" value="${data.dari || ''}"></td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i2-ke" value="${data.ke || ''}"></td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i2-tempoh" value="${data.tempoh || 'Serta-merta'}"></td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i2-unit" value="${data.unit || '1 naskah'}"></td>
-            <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i2-meter" value="${data.meter || '0.01'}"></td>
-            <td class="p-2 border-b"><button onclick="this.parentElement.parentElement.remove();updateBil('borang2');" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>`;
-        tbody.appendChild(row);
-        updateBil('borang2');
-    }
-}
 
-// Captures + compresses a damage photo ("Foto Kerosakan") for a Borang 9 row,
-// stores it on the row's dataset, and shows a thumbnail preview.
-async function handleRowPhoto(e, uid, type) {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-        const dataUrl = await compressImage(file);
-        const row = document.querySelector(`tr[data-uid="${uid}"]`);
-        if (!row) return;
-        row.dataset.foto = dataUrl;
-        const img = row.querySelector('.i-foto-preview');
-        img.src = dataUrl;
-        img.classList.remove('hidden');
-    } catch (err) {
-        alert('Gagal memproses foto: ' + err.message);
-    }
-}
+                <div id="status-container" class="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-between hidden animate-pulse">
+                    <div class="flex items-center space-x-3">
+                        <div class="loader"></div>
+                        <span id="status-text" class="text-sm font-bold text-blue-700 uppercase tracking-wide">Memproses...</span>
+                    </div>
+                </div>
 
-function updateBil(type) {
-    const sel = type === 'borang' ? '#b_items-tbody' : '#b2_items-tbody';
-    const rows = document.querySelectorAll(`${sel} tr`);
-    rows.forEach((r, i) => { const c = r.querySelector('.bil-num'); if (c) c.innerText = i + 1; });
-    const counter = document.getElementById(type === 'borang' ? 'row-count' : 'row-count-2');
-    if (counter) counter.innerText = `${rows.length} rekod`;
-}
+                <div class="space-y-6">
+                    <div class="group">
+                        <label class="flex items-center space-x-2 text-xs font-black text-slate-500 mb-2 ml-1 uppercase tracking-widest">
+                            <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
+                            <span>TAJUK REKOD / BAHAN</span>
+                        </label>
+                        <input type="text" id="input-tajuk" placeholder="..." class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-bold outline-none focus:border-blue-500 transition-all uppercase text-lg">
+                    </div>
 
-function handleCSVUpload(e, type) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        const lines = event.target.result.split('\n');
-        lines.forEach((l, i) => {
-            if (i === 0 || !l.trim()) return;
-            const c = l.split(',').map(x => x.trim());
-            if (type === 'borang') addItem('borang', { tajuk: c[0], tahun: c[1], meter: c[2], cadangan: c[3], catatan: c[4] });
-            else addItem('borang2', { tajuk: c[0], dari: c[1], ke: c[2], tempoh: c[3], unit: c[4], meter: c[5] });
-        });
-    };
-    reader.readAsText(file);
-}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="group">
+                            <label class="flex items-center space-x-2 text-xs font-black text-slate-500 mb-2 ml-1 uppercase tracking-widest">
+                                <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+                                <span>TAHUN</span>
+                            </label>
+                            <input type="number" id="input-tahun" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-bold focus:border-blue-500 outline-none transition-all text-lg">
+                        </div>
+                        <div class="group">
+                            <label class="flex items-center space-x-2 text-xs font-black text-slate-500 mb-2 ml-1 uppercase tracking-widest">
+                                <i data-lucide="gauge" class="w-4 h-4 text-blue-600"></i>
+                                <span>METER / JUMLAH</span>
+                            </label>
+                            <input type="text" id="input-meter" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-bold focus:border-blue-500 outline-none transition-all text-lg">
+                        </div>
+                    </div>
 
-// ============ BORANG 12 PHOTO EVIDENCE (Pelupusan / Pemusnahan) ============
-let b12Photos = JSON.parse(sessionStorage.getItem('pss_b12_photos') || '[]');
+                    <div class="group">
+                        <label class="flex items-center space-x-2 text-xs font-black text-slate-500 mb-2 ml-1 uppercase tracking-widest">
+                            <i data-lucide="check-circle" class="w-4 h-4 text-blue-600"></i>
+                            <span>CADANGAN TINDAKAN</span>
+                        </label>
+                        <select id="select-cadangan" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-bold focus:border-blue-500 outline-none transition-all text-lg">
+                            <option value="">Sila Pilih</option>
+                            <option value="MUSNAH">MUSNAH</option>
+                            <option value="KITAR SEMULA">KITAR SEMULA</option>
+                            <option value="DERMA/SUMBANGAN">KITAR SEMULA</option>
+                            <option value="JUALAN/LELONGAN">KITAR SEMULA</option>
+                        </select>
+                    </div>
 
-function persistB12Photos() {
-    try { sessionStorage.setItem('pss_b12_photos', JSON.stringify(b12Photos)); }
-    catch (err) { console.warn('Tidak dapat simpan sesi foto (mungkin terlalu besar):', err); }
-}
+                    <div class="grid grid-cols-2 gap-3 pt-4">
+                        <button onclick="resetForm()" class="btn-primary flex items-center justify-center space-x-2 bg-rose-50 text-rose-600 py-5 px-4 rounded-2xl font-black uppercase tracking-tight">
+                            <i data-lucide="refresh-ccw" class="w-5 h-5"></i>
+                            <span>MULA SEMULA</span>
+                        </button>
+                        <button onclick="copyAllData()" class="btn-primary flex items-center justify-center space-x-2 bg-slate-100 text-slate-700 py-5 px-4 rounded-2xl font-black uppercase tracking-tight">
+                            <i data-lucide="clipboard" class="w-5 h-5"></i>
+                            <span>SALIN TEKS</span>
+                        </button>
+                    </div>
 
-async function handleB12Photo(e) {
-    const files = Array.from(e.target.files || []);
-    for (const file of files) {
-        try {
-            const dataUrl = await compressImage(file, 900, 0.6);
-            b12Photos.push(dataUrl);
-        } catch (err) { console.warn('Gagal proses foto:', err); }
-    }
-    persistB12Photos();
-    renderB12Photos();
-    e.target.value = '';
-}
+                    <button id="btn-save" onclick="saveToSheets()" class="btn-primary flex items-center justify-center space-x-2 bg-emerald-600 text-white py-5 px-4 rounded-2xl font-black hover:bg-emerald-700 w-full shadow-lg shadow-emerald-100">
+                        <i data-lucide="send" class="w-5 h-5"></i>
+                        <span>SIMPAN REKOD</span>
+                    </button>
 
-function removeB12Photo(idx) {
-    b12Photos.splice(idx, 1);
-    persistB12Photos();
-    renderB12Photos();
-}
+                    <!-- Butang Preview Data Utama -->
+                    <button onclick="previewDataRekod()" class="btn-primary flex items-center justify-center space-x-2 bg-amber-500 text-white py-5 px-4 rounded-2xl font-black hover:bg-amber-600 w-full shadow-lg shadow-amber-100 uppercase tracking-tight">
+                        <i data-lucide="eye" class="w-5 h-5"></i>
+                        <span>PREVIEW DATA</span>
+                    </button>
 
-function renderB12Photos() {
-    const grid = document.getElementById('b12-photo-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    if (b12Photos.length === 0) {
-        grid.innerHTML = `<span class="col-span-full text-xs text-gray-400 italic">Tiada foto lagi.</span>`;
-        return;
-    }
-    b12Photos.forEach((src, idx) => {
-        const wrap = document.createElement('div');
-        wrap.className = 'relative';
-        wrap.innerHTML = `
-            <img src="${src}" class="w-full h-20 object-cover rounded-lg border cursor-pointer" onclick="openPhotoModal('${src}')">
-            <button onclick="removeB12Photo(${idx})" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button>`;
-        grid.appendChild(wrap);
-    });
-}
+                    <button onclick="openArkib2()" class="btn-primary flex items-center justify-center space-x-2 bg-indigo-600 text-white py-5 px-4 rounded-2xl font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all uppercase tracking-tight w-full">
+                        <i data-lucide="archive" class="w-5 h-5"></i>
+                        <span>ARKIB 2/08</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-// ============ RECORDS ============
-function saveRecord(type) {
-    const id = Date.now();
-    let ref = '';
-    let extra = {};
-    if (type === 'surat') ref = document.getElementById('s_no_rujukan').value;
-    else if (type === 'borang') {
-        ref = document.getElementById('b_pegawai').value || 'Borang 9/08';
-        const fotos = Array.from(document.querySelectorAll('#b_items-tbody tr')).map(r => r.dataset.foto || '').filter(Boolean);
-        extra.jumlahFoto = fotos.length;
-    }
-    else if (type === 'borang2') ref = document.getElementById('b2_pegawai').value || 'Borang 2/08';
-    else if (type === 'borang12') {
-        ref = document.getElementById('b12_no_rujukan').value || 'Borang 12/08';
-        extra.jumlahFoto = b12Photos.length;
-    }
-    const data = { id, type, date: new Date().toLocaleDateString('ms-MY'), ref, ...extra };
-    records.unshift(data);
-    try {
-        localStorage.setItem('pss_records_v5', JSON.stringify(records));
-    } catch (err) {
-        alert('Amaran: ruang simpanan peranti hampir penuh. Rekod disimpan tanpa sebahagian data foto.');
-    }
-    updateStats(); renderRecords();
-    alert('Rekod berjaya disimpan!');
-}
-function updateStats() { const el = document.getElementById('stat-total'); if (el) el.innerText = records.length; }
-function renderRecords() {
-    const body = document.getElementById('list-body');
-    if (!body) return;
-    body.innerHTML = '';
-    if (records.length === 0) { body.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-gray-400">Tiada rekod tersimpan</td></tr>`; return; }
-    records.forEach(r => {
-        const row = document.createElement('tr');
-        row.innerHTML = `<td class="p-5 border-b font-bold text-indigo-600 uppercase text-xs">${r.type}</td><td class="p-5 border-b font-medium">${r.ref}</td><td class="p-5 border-b text-gray-500">${r.date}</td><td class="p-5 border-b text-right"><button class="text-red-500 hover:text-red-700" onclick="deleteRecord(${r.id})"><i class="fas fa-trash"></i></button></td>`;
-        body.appendChild(row);
-    });
-}
-function deleteRecord(id) { records = records.filter(r => r.id !== id); localStorage.setItem('pss_records_v5', JSON.stringify(records)); updateStats(); renderRecords(); }
+    <!-- ARKIB 2 VIEW (Pemusnahan Rekod Awam) -->
+    <div id="arkib2-view" class="hidden w-full max-w-2xl mx-auto py-6 md:py-10 px-4 animate-in">
+        <button onclick="closeArkib2()" class="mb-6 flex items-center text-slate-500 font-bold hover:text-slate-800 transition-colors">
+            <i data-lucide="arrow-left" class="w-5 h-5 mr-2"></i>
+            KEMBALI KE UTAMA
+        </button>
 
-// ============================================================
-// PDF HELPER — draw wrapped text, return new Y
-// ============================================================
-function drawText(doc, text, x, y, maxWidth, fontSize = 8) {
-    doc.setFontSize(fontSize);
-    const lines = doc.splitTextToSize(String(text || ''), maxWidth);
-    doc.text(lines, x, y);
-    return y + (lines.length - 1) * (fontSize * 0.3528 * 1.2);
-}
+        <div class="text-center mb-8">
+            <h1 class="text-xl md:text-2xl font-extrabold tracking-tight uppercase">BORANG PERMOHONAN BAGI PEMUSNAHAN REKOD AWAM</h1>
+            <p class="text-slate-500 mt-2 font-medium text-xs uppercase tracking-widest">Maklumat Mengenai Rekod (ARKIB 2)</p>
+        </div>
 
-// Adds an appendix page (or pages) of item-photo evidence to a jsPDF doc.
-// items = [{ title, photo (dataURL) }]
-function addPhotoAppendix(doc, items, appendixTitle) {
-    const withPhotos = items.filter(it => it.photo);
-    if (withPhotos.length === 0) return;
-    const PW = 210, PH = 297, ML = 15, MR = 15, TW = PW - ML - MR;
-    doc.addPage();
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
-    doc.text(appendixTitle, PW / 2, 16, { align: 'center' });
+        <div class="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/60 overflow-hidden border border-slate-100">
+            
+            <!-- Camera for Arkib 2 -->
+            <div id="arkib-camera-container" class="bg-slate-900 relative aspect-[4/3] flex items-center justify-center">
+                 <video id="arkib-video" autoplay playsinline class="w-full h-full object-cover hidden"></video>
+                 
+                 <!-- Kotak Fokus Garis (Frame Overlay) -->
+                 <div id="arkib-camera-frame" class="camera-frame hidden">
+                    <div class="frame-corner corner-tl"></div>
+                    <div class="frame-corner corner-tr"></div>
+                    <div class="frame-corner corner-bl"></div>
+                    <div class="frame-corner corner-br"></div>
+                 </div>
 
-    const cols = 2, cellW = TW / cols, cellH = 75;
-    let x = ML, y = 24, col = 0;
-    withPhotos.forEach((it, idx) => {
-        if (y + cellH > PH - 15) {
-            doc.addPage();
-            y = 20; x = ML; col = 0;
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
-            doc.text(appendixTitle + ' (samb.)', PW / 2, 14, { align: 'center' });
+                 <div id="arkib-camera-placeholder" class="text-slate-600 flex flex-col items-center p-10 text-center">
+                    <p class="text-sm font-bold uppercase tracking-widest opacity-40">Kamera Arkib Belum Diaktifkan</p>
+                 </div>
+            </div>
+
+            <div class="p-6 md:p-8 space-y-6">
+                <!-- Butang Kamera Dinamik Arkib 2 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <button id="btn-arkib-camera-action" class="btn-primary w-full flex items-center justify-center space-x-2 bg-slate-900 text-white py-5 rounded-2xl font-black">
+                        <i data-lucide="camera" class="w-5 h-5"></i>
+                        <span id="arkib-btn-text">BUKA KAMERA ARKIB</span>
+                    </button>
+                    <label for="arkib-gambar-input" class="btn-primary cursor-pointer flex items-center justify-center space-x-2 bg-slate-100 text-slate-700 py-5 px-6 rounded-2xl font-black hover:bg-slate-200 w-full uppercase">
+                        <i data-lucide="upload" class="w-5 h-5"></i>
+                        <span>MuAT NAIK FAIL</span>
+                    </label>
+                    <input type="file" id="arkib-gambar-input" accept="image/*" class="hidden">
+                </div>
+
+                <div class="grid grid-cols-1 gap-6">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">BILANGAN (5)</label>
+                        <input type="number" id="arkib-bil" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">TAJUK SIRI (6)</label>
+                        <textarea id="arkib-tajuk-siri" rows="3" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-indigo-500 uppercase" placeholder="Masukkan tajuk siri rekod..."></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">TAHUN DARI (7)</label>
+                            <input type="number" id="arkib-tahun-dari" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">TAHUN HINGGA (7)</label>
+                            <input type="number" id="arkib-tahun-ke" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">TEMPOH PENGEKALAN (8)</label>
+                        <input type="text" id="arkib-tempoh" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-indigo-500 uppercase">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">UNIT REKOD (9)</label>
+                            <input type="text" id="arkib-unit" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-indigo-500 uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">METER PANJANG (10)</label>
+                            <input type="text" id="arkib-meter" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-indigo-500 uppercase">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-4">
+                    <button onclick="resetArkibForm()" class="btn-primary flex items-center justify-center space-x-2 bg-rose-50 text-rose-600 py-5 px-4 rounded-2xl font-black uppercase tracking-tight">
+                        <i data-lucide="refresh-ccw" class="w-5 h-5"></i>
+                        <span>MULA SEMULA</span>
+                    </button>
+                    <button onclick="copyArkibData()" class="btn-primary flex items-center justify-center space-x-2 bg-slate-100 text-slate-700 py-5 px-4 rounded-2xl font-black uppercase tracking-tight">
+                        <i data-lucide="clipboard" class="w-5 h-5"></i>
+                        <span>SALIN TEKS</span>
+                    </button>
+                </div>
+
+                <button onclick="saveArkib2()" class="btn-primary w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-indigo-700 transition-all uppercase">
+                    SIMPAN REKOD
+                </button>
+
+                <!-- Butang Preview Data Khusus Arkib 2 -->
+                <button onclick="previewDataArkib()" class="btn-primary flex items-center justify-center space-x-2 bg-amber-500 text-white py-5 px-4 rounded-2xl font-black hover:bg-amber-600 w-full shadow-lg shadow-amber-100 uppercase tracking-tight">
+                    <i data-lucide="eye" class="w-5 h-5"></i>
+                    <span>PREVIEW DATA</span>
+                </button>
+            </div>
+        </div>
+        <p class="text-center text-slate-400 text-[10px] mt-10 uppercase tracking-[0.2em] font-black opacity-30">Pemusnahan Rekod Awam Form Section</p>
+    </div>
+
+    </div><!-- /#app-root -->
+
+    <!-- Mobile bottom nav for quick access on phones -->
+    <nav id="mobile-nav" class="hidden md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 text-white flex justify-around items-stretch z-40 border-t border-slate-800" style="padding-bottom: env(safe-area-inset-bottom);">
+        <button onclick="closeArkib2()" class="flex-1 flex flex-col items-center justify-center py-2 gap-1 text-slate-300">
+            <i data-lucide="camera" class="w-5 h-5"></i><span class="text-[9px] font-bold">UTAMA</span>
+        </button>
+        <button onclick="openArkib2()" class="flex-1 flex flex-col items-center justify-center py-2 gap-1 text-slate-300">
+            <i data-lucide="archive" class="w-5 h-5"></i><span class="text-[9px] font-bold">ARKIB 2/08</span>
+        </button>
+    </nav>
+
+    <script>
+        lucide.createIcons();
+
+        // --- KONFIGURASI URL WEB APPS & SHEETS ---
+        const URL_WEB_APP_REKOD = 'https://script.google.com/macros/s/AKfycbyVIz2DdB51ZQU3G4PX8bHvpvveUT_f7EHQkSQnSNAF3acLOacFTQ0eFJAXvlEvIBHxCg/exec';
+        const URL_WEB_APP_ARKIB2 = 'https://script.google.com/macros/s/AKfycby6nhwpjU77AzARYWcMl1fr5JuionmlmMnoBnmCaks9lxTiAxwhM4W3oUNy49mf8a-eKQ/exec'; // Masukkan URL Web App untuk Arkib 2 di sini
+        
+        const URL_SHEETS_REKOD = 'https://docs.google.com/spreadsheets/d/1_CX7jDm7xl-YGGpyZpZnfPfYBKoU_-TRJtDaFOg4fsI/edit?usp=sharing'; 
+        const URL_SHEETS_ARKIB = 'https://docs.google.com/spreadsheets/d/1sdLxpfb1ZOo7STPwu-yTzx4wozmMFgONUb2XqkuYvBI/edit?usp=sharing'; 
+
+        // --- LOG MASUK (nama sahaja, tiada kata laluan) ---
+        function handleLogin(e) {
+            e.preventDefault();
+            const nama = document.getElementById('login-nama').value.trim();
+            if (nama.length >= 2) {
+                sessionStorage.setItem('isLoggedIn', 'true');
+                sessionStorage.setItem('namaGuru', nama);
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-root').classList.remove('hidden');
+                applyLoggedInName();
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
         }
-        const cx = ML + col * cellW;
-        try {
-            doc.addImage(it.photo, 'JPEG', cx + 3, y, cellW - 6, cellH - 12);
-        } catch (err) { /* ignore bad image */ }
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
-        const capLines = doc.splitTextToSize(`${idx + 1}. ${it.title || ''}`, cellW - 6);
-        doc.text(capLines, cx + 3, y + cellH - 8);
-
-        col++;
-        if (col >= cols) { col = 0; x = ML; y += cellH; }
-    });
-}
-
-// ============================================================
-//  BORANG 9/08 — pixel-perfect
-// ============================================================
-function downloadBorang9PDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-    const PW = 210, PH = 297;
-    const ML = 15, MR = 15;
-    const TW = PW - ML - MR;  // 180mm usable
-    const CX = PW / 2;
-
-    // ---- FONT helpers ----
-    const setFont = (style = 'normal', size = 8) => { doc.setFont('helvetica', style); doc.setFontSize(size); };
-    const setColor = (r, g, b) => { doc.setTextColor(r, g, b); };
-
-    // ---- HEADER ----
-    setFont('normal', 9);
-    setColor(0,0,0);
-    doc.text('[Subperaturan 7(3)]', CX, 12, { align: 'center' });
-
-    setFont('bold', 11);
-    doc.text('Borang 9', CX, 18, { align: 'center' });
-
-    setFont('normal', 9);
-    doc.text('Arkib 9/08', PW - MR, 18, { align: 'right' });
-
-    setFont('bold', 10);
-    doc.text('BORANG PERMOHONAN BAGI PELUPUSAN', CX, 26, { align: 'center' });
-    doc.text('REKOD TERBITAN DAN BAHAN BERCETAK', CX, 31, { align: 'center' });
-    setFont('normal', 9);
-    doc.text('( YANG TIDAK DINYATAKAN DALAM JADUAL PELUPUSAN REKOD )', CX, 36, { align: 'center' });
-
-    // ---- SECTION 1: BUTIR-BUTIR JABATAN ----
-    let y = 41;
-    const boxH1 = 42;
-    // Outer border
-    doc.rect(ML, y, TW, boxH1);
-    // Vertical divider at 130mm from left (leaving 50mm for Arkib Negara box)
-    doc.line(ML + 130, y, ML + 130, y + boxH1);
-
-    // Left column — "BUTIR-BUTIR JABATAN" header (centered, bold)
-    setFont('bold', 9);
-    doc.text('BUTIR-BUTIR JABATAN', ML + 65, y + 5, { align: 'center' });
-
-    // Right column — "Untuk Kegunaan Arkib Negara" (centered, bold)
-    setFont('bold', 8);
-    doc.text('Untuk Kegunaan Arkib Negara', ML + 130 + 25, y + 5, { align: 'center' });
-
-    // Horizontal line under header row
-    doc.line(ML, y + 8, ML + 130, y + 8);
-    doc.line(ML + 130, y + 8, ML + TW, y + 8);
-
-    // Row 1: (1) Kementerian | (2) Bahagian — split left at 65mm
-    doc.line(ML + 65, y + 8, ML + 65, y + 20);
-
-    setFont('normal', 7.5);
-    doc.text('(1) Kementerian/Jabatan/Agensi:', ML + 2, y + 13);
-    setFont('bold', 7.5);
-    doc.text(document.getElementById('b_jabatan').value, ML + 2, y + 18);
-
-    setFont('normal', 7.5);
-    doc.text('(2) Bahagian/Cawangan/Unit:', ML + 67, y + 13);
-    setFont('bold', 7.5);
-    doc.text(document.getElementById('b_bahagian').value, ML + 67, y + 18);
-
-    // Arkib Negara right column content
-    setFont('normal', 7.5);
-    doc.text('Tarikh Terima:', ML + 132, y + 13);
-    doc.text('Jumlah Rekod:', ML + 132, y + 19);
-    doc.text('No. Penerimaan:', ML + 132, y + 25);
-
-    // Horizontal line after row 1
-    doc.line(ML, y + 20, ML + 130, y + 20);
-
-    // Row 2: (3) Pewujud Rekod — full left width
-    setFont('normal', 7.5);
-    doc.text('(3) Pewujud Rekod [Jika tidak sama dengan (1)]:', ML + 2, y + 25);
-    setFont('bold', 7.5);
-    doc.text(document.getElementById('b_pewujud').value, ML + 2, y + 31);
-
-    // ---- SECTION 2: MAKLUMAT MENGENAI REKOD ----
-    y += boxH1;
-    const secH = 8;
-    doc.rect(ML, y, 130, secH);
-    setFont('bold', 9);
-    doc.text('MAKLUMAT MENGENAI REKOD', ML + 65, y + 5.5, { align: 'center' });
-
-    y += secH;
-    const ksH = 9;
-    doc.rect(ML, y, 130, ksH);
-    setFont('normal', 8);
-    doc.text('(4) Peringkat Keselamatan:', ML + 2, y + 5.5);
-    setFont('bold', 8);
-    doc.text(document.getElementById('b_keselamatan').value, ML + 60, y + 5.5);
-
-    // ---- SECTION 3: TABLE HEADER ----
-    y += ksH;
-    const ROW_H = 10;  // header row height
-    const DATA_H = 10; // data row height
-
-    // Column widths (total = 180mm)
-    // Bil | Tajuk | Tahun | Meter | Cadangan | Catatan
-    const cols = [12, 68, 26, 22, 26, 26]; // sum = 180
-    const colX = [ML];
-    cols.forEach((w, i) => colX.push(colX[i] + w));
-
-    // Draw header box
-    doc.rect(ML, y, TW, ROW_H);
-    cols.forEach((_, i) => {
-        if (i > 0) doc.line(colX[i], y, colX[i], y + ROW_H);
-    });
-
-    setFont('bold', 7);
-    // Header row - multi-line centered
-    const headers = [
-        { lines: ['Bil.','(5)'] },
-        { lines: ['Tajuk','(6)'] },
-        { lines: ['Tahun/Tarikh','Diterbitkan (7)'] },
-        { lines: ['Meter','Panjang/','Jumlah (8)'] },
-        { lines: ['Cadangan','Pelupusan (9)'] },
-        { lines: ['Catatan','(10)'] }
-    ];
-    headers.forEach((h, i) => {
-        const cx = colX[i] + cols[i] / 2;
-        const totalLines = h.lines.length;
-        const startY = y + ROW_H / 2 - ((totalLines - 1) * 2.8) / 2 + 1.5;
-        h.lines.forEach((line, li) => doc.text(line, cx, startY + li * 2.8, { align: 'center' }));
-    });
-
-    // ---- DATA ROWS ----
-    const items = document.querySelectorAll('#b_items-tbody tr');
-    const photoAppendixItems = [];
-    items.forEach((tr, idx) => {
-        y += ROW_H;
-        // Draw row border
-        doc.rect(ML, y, TW, DATA_H);
-        cols.forEach((_, i) => { if (i > 0) doc.line(colX[i], y, colX[i], y + DATA_H); });
-
-        const vals = [
-            String(idx + 1),
-            tr.querySelector('.i-tajuk')?.value || '',
-            tr.querySelector('.i-tahun')?.value || '',
-            tr.querySelector('.i-meter')?.value || '',
-            tr.querySelector('.i-cadangan')?.value || '',
-            tr.querySelector('.i-catatan')?.value || ''
-        ];
-
-        setFont('normal', 7.5);
-        vals.forEach((val, i) => {
-            const cx = i === 0 ? colX[i] + cols[i] / 2 : colX[i] + 1.5;
-            const align = i === 0 ? 'center' : 'left';
-            const maxW = cols[i] - 3;
-            const lines = doc.splitTextToSize(val, maxW);
-            doc.text(lines[0], cx, y + 6, { align });
-        });
-
-        if (tr.dataset.foto) photoAppendixItems.push({ title: vals[1], photo: tr.dataset.foto });
-    });
-
-    // Add empty rows if fewer than 8 items
-    const emptyRows = Math.max(0, 8 - items.length);
-    for (let e = 0; e < emptyRows; e++) {
-        y += DATA_H;
-        doc.rect(ML, y, TW, DATA_H);
-        cols.forEach((_, i) => { if (i > 0) doc.line(colX[i], y, colX[i], y + DATA_H); });
-    }
-
-    // ---- SECTION 4: FOOTER ----
-    y += DATA_H + 5;
-    const footerText = '(11) Mengikut Seksyen 25 dan 26, Akta Arkib Negara 2003 (Akta 629), saya mengemukakan permohonan ini bagi pelupusan rekod di atas:';
-    setFont('normal', 7.5);
-    const footerLines = doc.splitTextToSize(footerText, TW);
-    doc.text(footerLines, ML, y);
-    y += footerLines.length * 3.5 + 3;
-
-    // Nama & Tandatangan row
-    setFont('normal', 8);
-    doc.text('Nama Pegawai:', ML, y);
-    setFont('bold', 8);
-    doc.text(document.getElementById('b_pegawai').value || '', ML + 35, y);
-    setFont('normal', 8);
-    doc.text('Tandatangan dan Meterai/Cap Jabatan:', ML + 95, y);
-
-    y += 7;
-    setFont('normal', 8);
-    doc.text('Jawatan:', ML, y);
-    setFont('bold', 8);
-    doc.text(document.getElementById('b_jawatan').value || '', ML + 35, y);
-
-    y += 7;
-    setFont('normal', 8);
-    doc.text('Tarikh:', ML, y);
-    setFont('bold', 8);
-    doc.text(new Date().toLocaleDateString('ms-MY'), ML + 35, y);
-
-    // Bottom "Arkib 9/08" right aligned
-    setFont('normal', 8);
-    doc.text('Arkib 9/08', PW - MR, PH - 8, { align: 'right' });
-
-    // Appendix of damage photos, if any were captured
-    addPhotoAppendix(doc, photoAppendixItems, 'LAMPIRAN — FOTO KEROSAKAN BAHAN (Borang 9/08)');
-
-    doc.save('Borang_Arkib_9-08.pdf');
-}
-
-// ============================================================
-//  BORANG 2/08 — pixel-perfect
-// ============================================================
-function downloadBorang2PDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-    const PW = 210, PH = 297;
-    const ML = 15, MR = 15;
-    const TW = PW - ML - MR;
-    const CX = PW / 2;
-
-    const setFont = (style = 'normal', size = 8) => { doc.setFont('helvetica', style); doc.setFontSize(size); };
-    const setColor = (r, g, b) => { doc.setTextColor(r, g, b); };
-    setColor(0,0,0);
-
-    // ---- HEADER ----
-    setFont('normal', 9);
-    doc.text('[Subperaturan 7(1)]', CX, 12, { align: 'center' });
-
-    setFont('bold', 11);
-    doc.text('Borang 2', CX, 18, { align: 'center' });
-
-    setFont('normal', 9);
-    doc.text('Arkib 2/08', PW - MR, 18, { align: 'right' });
-
-    setFont('bold', 10);
-    doc.text('BORANG PERMOHONAN BAGI PELUPUSAN REKOD AWAM', CX, 26, { align: 'center' });
-    setFont('normal', 9);
-    doc.text('( YANG DINYATAKAN DALAM JADUAL PELUPUSAN REKOD )', CX, 31, { align: 'center' });
-
-    // ---- SECTION 1: BUTIR-BUTIR JABATAN ----
-    let y = 36;
-    const boxH1 = 42;
-    doc.rect(ML, y, TW, boxH1);
-    doc.line(ML + 130, y, ML + 130, y + boxH1);
-
-    setFont('bold', 9);
-    doc.text('BUTIR-BUTIR JABATAN', ML + 65, y + 5, { align: 'center' });
-
-    setFont('bold', 8);
-    doc.text('Untuk Kegunaan Arkib Negara', ML + 130 + 25, y + 5, { align: 'center' });
-
-    doc.line(ML, y + 8, ML + 130, y + 8);
-    doc.line(ML + 130, y + 8, ML + TW, y + 8);
-
-    doc.line(ML + 65, y + 8, ML + 65, y + 20);
-
-    setFont('normal', 7.5);
-    doc.text('(1) Kementerian/Jabatan/Agensi:', ML + 2, y + 13);
-    setFont('bold', 7.5);
-    doc.text(document.getElementById('b2_jabatan').value, ML + 2, y + 18);
-
-    setFont('normal', 7.5);
-    doc.text('(2) Bahagian/Cawangan/Unit:', ML + 67, y + 13);
-    setFont('bold', 7.5);
-    doc.text(document.getElementById('b2_bahagian').value, ML + 67, y + 18);
-
-    setFont('normal', 7.5);
-    doc.text('Tarikh Terima:', ML + 132, y + 13);
-    doc.text('Jumlah Rekod:', ML + 132, y + 19);
-    doc.text('No. Penerimaan:', ML + 132, y + 25);
-
-    doc.line(ML, y + 20, ML + 130, y + 20);
-
-    setFont('normal', 7.5);
-    doc.text('(3) Pewujud Rekod [Jika tidak sama dengan (1)]:', ML + 2, y + 25);
-    setFont('bold', 7.5);
-    doc.text(document.getElementById('b2_pewujud').value, ML + 2, y + 31);
-
-    doc.line(ML, y + 33, ML + 130, y + 33);
-    setFont('normal', 7.5);
-    doc.text('(4) Jadual Pelupusan Yang Diguna Pakai:', ML + 2, y + 38);
-    setFont('bold', 7.5);
-    doc.text(document.getElementById('b2_jadual').value, ML + 2, y + boxH1 - 2);
-
-    // ---- TABLE ----
-    y += boxH1;
-    // Cols: Bil | Tajuk | Dari | Ke | Tempoh | Unit | Meter
-    //        10    58     14    14    28       24     18    (= 166 but we use 180)
-    //        12    60     16    16    28       24     24
-    const cols = [12, 60, 16, 16, 28, 24, 24]; // = 180
-    const colX = [ML];
-    cols.forEach((w, i) => colX.push(colX[i] + w));
-
-    const HDR_H1 = 10;
-    const HDR_H2 = 6;
-    const DATA_H = 10;
-
-    // Row 1 header
-    doc.rect(ML, y, TW, HDR_H1 + HDR_H2);
-
-    // Draw all vertical lines full height of both header rows
-    cols.forEach((_, i) => {
-        if (i > 0) doc.line(colX[i], y, colX[i], y + HDR_H1 + HDR_H2);
-    });
-
-    // Merge Bil, Tajuk, Tempoh, Unit, Meter (span both rows)
-    // Sub-cols for Tahun (col 2+3): draw horizontal separator only there
-    doc.line(colX[2], y + HDR_H1, colX[4], y + HDR_H1); // under "Tahun Diliputi"
-
-    setFont('bold', 7);
-    // "Tahun Diliputi (7)" centered over col 2+3
-    const tahunCX = colX[2] + (cols[2] + cols[3]) / 2;
-    doc.text('Tahun Diliputi (7)', tahunCX, y + 5.5, { align: 'center' });
-
-    // Sub-header "Daripada" and "Kepada"
-    setFont('normal', 6.5);
-    doc.text('Daripada', colX[2] + cols[2] / 2, y + HDR_H1 + 4, { align: 'center' });
-    doc.text('Kepada', colX[3] + cols[3] / 2, y + HDR_H1 + 4, { align: 'center' });
-
-    // Other headers — centered vertically in full double-row
-    setFont('bold', 7);
-    const fullHdrH = HDR_H1 + HDR_H2;
-    const hdrItems = [
-        { i: 0, text: ['Bil.', '(5)'] },
-        { i: 1, text: ['Tajuk Siri Rekod', '(6)'] },
-        { i: 4, text: ['Tempoh', 'Pengekalan (8)'] },
-        { i: 5, text: ['Unit', 'Rekod (9)'] },
-        { i: 6, text: ['Meter', 'Panjang (10)'] }
-    ];
-    hdrItems.forEach(h => {
-        const cx = colX[h.i] + cols[h.i] / 2;
-        const tl = h.text.length;
-        const sy = y + fullHdrH / 2 - ((tl - 1) * 2.8) / 2 + 1;
-        h.text.forEach((line, li) => doc.text(line, cx, sy + li * 2.8, { align: 'center' }));
-    });
-
-    y += fullHdrH;
-
-    // DATA ROWS
-    const items2 = document.querySelectorAll('#b2_items-tbody tr');
-    items2.forEach((tr, idx) => {
-        doc.rect(ML, y, TW, DATA_H);
-        cols.forEach((_, i) => { if (i > 0) doc.line(colX[i], y, colX[i], y + DATA_H); });
-
-        const vals = [
-            String(idx + 1),
-            tr.querySelector('.i2-tajuk')?.value || '',
-            tr.querySelector('.i2-dari')?.value || '',
-            tr.querySelector('.i2-ke')?.value || '',
-            tr.querySelector('.i2-tempoh')?.value || '',
-            tr.querySelector('.i2-unit')?.value || '',
-            tr.querySelector('.i2-meter')?.value || ''
-        ];
-
-        setFont('normal', 7.5);
-        vals.forEach((val, i) => {
-            const cx = i === 0 ? colX[i] + cols[i] / 2 : colX[i] + 1.5;
-            const align = i === 0 ? 'center' : 'left';
-            const maxW = cols[i] - 3;
-            const lines = doc.splitTextToSize(val, maxW);
-            doc.text(lines[0], cx, y + 6, { align });
-        });
-
-        y += DATA_H;
-    });
-
-    // Empty rows
-    const emptyRows2 = Math.max(0, 8 - items2.length);
-    for (let e = 0; e < emptyRows2; e++) {
-        doc.rect(ML, y, TW, DATA_H);
-        cols.forEach((_, i) => { if (i > 0) doc.line(colX[i], y, colX[i], y + DATA_H); });
-        y += DATA_H;
-    }
-
-    // ---- FOOTER ----
-    y += 5;
-    const footerText = '(11) Mengikut Seksyen 25 dan 26, Akta Arkib Negara 2003 (Akta 629), saya mengemukakan permohonan ini bagi pelupusan rekod di atas:';
-    setFont('normal', 7.5);
-    const footerLines = doc.splitTextToSize(footerText, TW);
-    doc.text(footerLines, ML, y);
-    y += footerLines.length * 3.5 + 3;
-
-    setFont('normal', 8);
-    doc.text('Nama Pegawai:', ML, y);
-    setFont('bold', 8);
-    doc.text(document.getElementById('b2_pegawai').value || '', ML + 35, y);
-    setFont('normal', 8);
-    doc.text('Tandatangan dan Meterai/Cap Jabatan:', ML + 95, y);
-
-    y += 7;
-    setFont('normal', 8);
-    doc.text('Jawatan:', ML, y);
-    setFont('bold', 8);
-    doc.text(document.getElementById('b2_jawatan').value || '', ML + 35, y);
-
-    y += 7;
-    setFont('normal', 8);
-    doc.text('Tarikh:', ML, y);
-    setFont('bold', 8);
-    doc.text(new Date().toLocaleDateString('ms-MY'), ML + 35, y);
-
-    setFont('normal', 8);
-    doc.text('Arkib 2/08', PW - MR, PH - 8, { align: 'right' });
-
-    doc.save('Borang_Arkib_2-08.pdf');
-}
-
-// ============ GOOGLE SHEETS CSV FETCH ============
-async function fetchGSheetCSV(type) {
-    const inputId = type === 'borang' ? 'gsheet-url-borang' : 'gsheet-url-borang2';
-    const url = document.getElementById(inputId).value.trim();
-    if (!url) { alert('Sila masukkan link CSV Google Sheets terlebih dahulu.'); return; }
-
-    // Convert regular Google Sheets URL to CSV export URL if needed
-    let csvUrl = url;
-    if (url.includes('docs.google.com/spreadsheets') && !url.includes('output=csv')) {
-        // Extract sheet ID and convert to CSV export
-        const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-        if (match) {
-            const sheetId = match[1];
-            const gidMatch = url.match(/gid=(\d+)/);
-            const gid = gidMatch ? gidMatch[1] : '0';
-            csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+        function handleLogout() {
+            sessionStorage.removeItem('isLoggedIn');
+            sessionStorage.removeItem('namaGuru');
+            location.reload();
         }
-    }
-
-    try {
-        const btn = document.querySelector(`button[onclick="fetchGSheetCSV('${type}')"]`);
-        const origText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat...';
-        btn.disabled = true;
-
-        const response = await fetch(csvUrl);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const text = await response.text();
-
-        const lines = text.split('\n');
-        let count = 0;
-        lines.forEach((l, i) => {
-            if (i === 0 || !l.trim()) return;
-            const c = l.split(',').map(x => x.trim().replace(/^"|"$/g, ''));
-            if (type === 'borang') addItem('borang', { tajuk: c[0], tahun: c[1], meter: c[2], cadangan: c[3], catatan: c[4] });
-            else addItem('borang2', { tajuk: c[0], dari: c[1], ke: c[2], tempoh: c[3], unit: c[4], meter: c[5] });
-            count++;
+        function applyLoggedInName() {
+            const nama = sessionStorage.getItem('namaGuru') || 'Guru';
+            const label = document.getElementById('nama-guru-label');
+            if (label) label.innerText = nama;
+        }
+        window.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('isLoggedIn') === 'true') {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-root').classList.remove('hidden');
+                applyLoggedInName();
+            }
         });
 
-        btn.innerHTML = origText;
-        btn.disabled = false;
-        alert(`✅ Berjaya! ${count} baris data diimport dari Google Sheets.`);
-    } catch (err) {
-        const btn = document.querySelector(`button[onclick="fetchGSheetCSV('${type}')"]`);
-        btn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Tarik Data';
-        btn.disabled = false;
-        alert(`❌ Gagal muat data. Pastikan link adalah link CSV yang betul dan Google Sheet telah diterbitkan ke web (Publish to web).\n\nRalat: ${err.message}`);
-    }
-}
-
-// ============================================================
-//  BORANG 12/08 — Penentusahan Pemusnahan Rekod Awam
-// ============================================================
-function downloadBorang12PDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-    const PW = 210, PH = 297;
-    const ML = 20, MR = 20;
-    const TW = PW - ML - MR; // 170mm
-    const CX = PW / 2;
-
-    const setFont = (style = 'normal', size = 9) => { doc.setFont('helvetica', style); doc.setFontSize(size); };
-    doc.setTextColor(0, 0, 0);
-
-    // ---- HEADER ----
-    setFont('normal', 9);
-    doc.text('[Peraturan 9(2)]', CX, 12, { align: 'center' });
-    setFont('bold', 12);
-    doc.text('Borang 12', CX, 19, { align: 'center' });
-    setFont('normal', 9);
-    doc.text('Arkib 12/08', PW - MR, 19, { align: 'right' });
-    setFont('bold', 11);
-    doc.text('PENENTUSAHAN PEMUSNAHAN REKOD AWAM', CX, 27, { align: 'center' });
-
-    // ---- BOX 1: BUTIR-BUTIR JABATAN ----
-    let y = 32;
-    const bh = 30;
-    doc.rect(ML, y, TW, bh);
-    // header band
-    doc.setFillColor(240, 240, 240);
-    doc.rect(ML, y, TW, 8, 'F');
-    doc.rect(ML, y, TW, 8); // border on top of fill
-    setFont('bold', 9);
-    doc.text('BUTIR-BUTIR JABATAN', CX, y + 5.5, { align: 'center' });
-
-    // col divider
-    doc.line(ML + TW/2, y + 8, ML + TW/2, y + bh);
-
-    setFont('normal', 8);
-    doc.text('(1) Kementerian/Jabatan/Agensi:', ML + 2, y + 14);
-    setFont('bold', 8.5);
-    doc.text(document.getElementById('b12_jabatan').value || '', ML + 2, y + 21);
-
-    setFont('normal', 8);
-    doc.text('(2) Bahagian/Cawangan/Unit:', ML + TW/2 + 2, y + 14);
-    setFont('bold', 8.5);
-    doc.text(document.getElementById('b12_bahagian').value || '', ML + TW/2 + 2, y + 21);
-
-    // ---- BOX 2: MAKLUMAT MENGENAI REKOD ----
-    y += bh + 3;
-    const mh = 115;
-    doc.rect(ML, y, TW, mh);
-    doc.setFillColor(240, 240, 240);
-    doc.rect(ML, y, TW, 8, 'F');
-    doc.rect(ML, y, TW, 8);
-    setFont('bold', 9);
-    doc.text('MAKLUMAT MENGENAI REKOD', CX, y + 5.5, { align: 'center' });
-
-    let ry = y + 13;
-
-    // (3) Surat Kebenaran
-    setFont('normal', 8.5);
-    doc.text('(3) Surat Kebenaran Pemusnahan:', ML + 2, ry);
-    ry += 6;
-    doc.text('3.1 No. Rujukan:', ML + 6, ry);
-    setFont('bold', 8.5);
-    doc.text(document.getElementById('b12_no_rujukan').value || '', ML + 42, ry);
-    setFont('normal', 8.5);
-    doc.text('3.2 Tarikh:', ML + TW/2, ry);
-    setFont('bold', 8.5);
-    // Format date nicely
-    const tSurat = document.getElementById('b12_tarikh_surat').value;
-    const tSuratFmt = tSurat ? new Date(tSurat).toLocaleDateString('ms-MY') : '';
-    doc.text(tSuratFmt, ML + TW/2 + 22, ry);
-
-    ry += 9;
-    setFont('normal', 8.5);
-    doc.text('(4) Perihal Rekod:', ML + 2, ry);
-    ry += 5;
-    setFont('normal', 8.5);
-    const perihalLines = doc.splitTextToSize(document.getElementById('b12_perihal').value || '', TW - 6);
-    doc.text(perihalLines, ML + 4, ry);
-    ry += Math.max(perihalLines.length * 4, 8);
-
-    setFont('normal', 8.5);
-    doc.text('(5) Meter Panjang Rekod Yang Dimusnahkan:', ML + 2, ry);
-    setFont('bold', 8.5);
-    doc.text(document.getElementById('b12_meter').value || '', ML + 80, ry);
-
-    ry += 8;
-    setFont('normal', 8.5);
-    doc.text('(6) Peringkat Keselamatan:', ML + 2, ry);
-    setFont('bold', 8.5);
-    doc.text(document.getElementById('b12_keselamatan').value || '', ML + 55, ry);
-
-    ry += 8;
-    // (7) Kaedah Pemusnahan — checkboxes
-    setFont('normal', 8.5);
-    doc.text('(7) Kaedah Pemusnahan:', ML + 2, ry);
-
-    const methods = [
-        { id: 'b12_bakar', label: 'dibakar' },
-        { id: 'b12_rincih', label: 'dirincih' },
-        { id: 'b12_kitar', label: 'dikitar semula' },
-        { id: 'b12_padam', label: 'dipadamkan' },
-        { id: 'b12_jual', label: 'dijual' }
-    ];
-    ry += 6;
-    let cx = ML + 4;
-    methods.forEach(m => {
-        const checked = document.getElementById(m.id)?.checked;
-        // Draw checkbox square
-        doc.rect(cx, ry - 3.5, 4, 4);
-        if (checked) {
-            setFont('bold', 9);
-            doc.text('X', cx + 0.8, ry - 0.2);
+        // Register service worker so the app can be "installed" on Android/iOS
+        // home screen and keep opening even with weak/no signal.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW gagal daftar:', err));
+            });
         }
-        setFont('normal', 8);
-        doc.text(m.label, cx + 5, ry);
-        cx += m.label.length * 2.8 + 10;
-    });
 
-    // No resit
-    setFont('normal', 8);
-    doc.text('  No. Resit (Jika Dijual):', cx, ry);
-    setFont('bold', 8);
-    doc.text(document.getElementById('b12_no_resit').value || '......................', cx + 40, ry);
+        // Views
+        const mainView = document.getElementById('main-view');
+        const arkib2View = document.getElementById('arkib2-view');
+        
+        // Main Elements
+        const video = document.getElementById('camera-preview');
+        const canvas = document.getElementById('capture-canvas');
+        const btnStart = document.getElementById('btn-start-camera');
+        const btnSnap = document.getElementById('btn-snap');
+        const cameraPlaceholder = document.getElementById('camera-placeholder');
+        const cameraOverlay = document.getElementById('camera-overlay');
+        const statusContainer = document.getElementById('status-container');
+        const statusText = document.getElementById('status-text');
+        const fileInputMain = document.getElementById('gambar-input');
 
-    ry += 9;
-    setFont('normal', 8.5);
-    doc.text('(8) Tarikh Pemusnahan:', ML + 2, ry);
-    const tMusnah = document.getElementById('b12_tarikh_musnah').value;
-    const tMusnahFmt = tMusnah ? new Date(tMusnah).toLocaleDateString('ms-MY') : '';
-    setFont('bold', 8.5);
-    doc.text(tMusnahFmt, ML + 48, ry);
-    setFont('normal', 8.5);
-    doc.text('(9) Tempat Pemusnahan:', ML + TW/2, ry);
-    setFont('bold', 8.5);
-    const tempat = document.getElementById('b12_tempat').value || '';
-    doc.text(doc.splitTextToSize(tempat, TW/2 - 5)[0], ML + TW/2 + 48, ry);
+        // Arkib Elements
+        const arkibVideo = document.getElementById('arkib-video');
+        const btnArkibCameraAction = document.getElementById('btn-arkib-camera-action');
+        const arkibBtnText = document.getElementById('arkib-btn-text');
+        const arkibPlaceholder = document.getElementById('arkib-camera-placeholder');
+        const arkibFrame = document.getElementById('arkib-camera-frame');
+        const fileInputArkib = document.getElementById('arkib-gambar-input');
 
-    // ---- BOX 3: PEGAWAI YANG MELAKSANAKAN ----
-    y += mh + 3;
-    const ph = 42;
-    doc.rect(ML, y, TW, ph);
-    doc.setFillColor(240, 240, 240);
-    doc.rect(ML, y, TW, 8, 'F');
-    doc.rect(ML, y, TW, 8);
-    setFont('bold', 9);
-    doc.text('PEGAWAI YANG MELAKSANAKAN PEMUSNAHAN', CX, y + 5.5, { align: 'center' });
+        let stream = null;
+        let arkibStream = null;
+        let isArkibCameraOpen = false;
 
-    // Divider between Pelaksana and Saksi
-    doc.line(ML + TW/2, y + 8, ML + TW/2, y + ph);
+        // --- FUNGSI PREVIEW BERBEZA ---
+        function previewDataRekod() {
+            window.open(URL_SHEETS_REKOD, '_blank');
+        }
 
-    let py = y + 14;
-    setFont('normal', 8.5);
-    doc.text('(10) Nama Pegawai:', ML + 2, py);
-    setFont('bold', 8.5);
-    doc.text(document.getElementById('b12_nama_pelaksana').value || '', ML + 2, py + 6);
-    setFont('normal', 8.5);
-    doc.text('Tandatangan:', ML + 2, py + 13);
-    doc.line(ML + 25, py + 13, ML + TW/2 - 3, py + 13);
-    setFont('normal', 8.5);
-    doc.text('Jawatan:', ML + 2, py + 21);
-    setFont('bold', 8);
-    doc.text(document.getElementById('b12_jawatan_pelaksana').value || '', ML + 20, py + 21);
+        function previewDataArkib() {
+            window.open(URL_SHEETS_ARKIB, '_blank');
+        }
 
-    // Saksi
-    setFont('normal', 8.5);
-    doc.text('(11) Nama Saksi:', ML + TW/2 + 2, py);
-    setFont('bold', 8.5);
-    doc.text(document.getElementById('b12_nama_saksi').value || '', ML + TW/2 + 2, py + 6);
-    setFont('normal', 8.5);
-    doc.text('Tandatangan:', ML + TW/2 + 2, py + 13);
-    doc.line(ML + TW/2 + 25, py + 13, ML + TW - 2, py + 13);
-    setFont('normal', 8.5);
-    doc.text('Jawatan:', ML + TW/2 + 2, py + 21);
-    setFont('bold', 8);
-    doc.text(document.getElementById('b12_jawatan_saksi').value || '', ML + TW/2 + 20, py + 21);
+        // --- CAMERA MAIN ---
+        btnStart.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                btnStart.classList.add('hidden');
+                btnSnap.classList.remove('hidden');
+                cameraPlaceholder.classList.add('hidden');
+                cameraOverlay.classList.remove('hidden');
+            } catch (err) { alert("Akses kamera dinafikan."); }
+        });
 
-    // ---- BOX 4: PENENTUSAHAN ----
-    y += ph + 3;
-    const qh = 40;
-    doc.rect(ML, y, TW, qh);
-    doc.setFillColor(240, 240, 240);
-    doc.rect(ML, y, TW, 8, 'F');
-    doc.rect(ML, y, TW, 8);
-    setFont('bold', 9);
-    doc.text('PENENTUSAHAN', CX, y + 5.5, { align: 'center' });
+        btnSnap.addEventListener('click', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            prosesOCR(canvas.toDataURL('image/jpeg'));
+            stopCamera();
+        });
 
-    setFont('normal', 8);
-    const penText = '(12) Saya mengesahkan bahawa rekod di atas telah dimusnahkan dengan sewajarnya mengikut Seksyen 25 dan 26, Akta Arkib Negara 2003 [Akta 629]:';
-    const penLines = doc.splitTextToSize(penText, TW - 4);
-    doc.text(penLines, ML + 2, y + 14);
+        function stopCamera() {
+            if(stream) stream.getTracks().forEach(t => t.stop());
+            btnStart.classList.remove('hidden');
+            btnSnap.classList.add('hidden');
+            cameraPlaceholder.classList.remove('hidden');
+            cameraOverlay.classList.add('hidden');
+            video.srcObject = null;
+        }
 
-    let qy = y + 14 + penLines.length * 4 + 3;
+        // --- UPLOAD HANDLERS ---
+        fileInputMain.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => prosesOCR(event.target.result);
+                reader.readAsDataURL(file);
+            }
+        });
 
-    // divider between pengesah fields and signature space
-    doc.line(ML + TW/2, y + 8, ML + TW/2, y + qh);
+        fileInputArkib.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => prosesOCRArkib(event.target.result);
+                reader.readAsDataURL(file);
+            }
+        });
 
-    setFont('normal', 8.5);
-    doc.text('Nama Pegawai:', ML + 2, qy);
-    setFont('bold', 8.5);
-    doc.text(document.getElementById('b12_nama_pengesah').value || '', ML + 30, qy);
+        // --- NAVIGATION ---
+        function openArkib2() {
+            stopCamera();
+            mainView.classList.add('hidden');
+            arkib2View.classList.remove('hidden');
+            window.scrollTo(0,0);
+        }
 
-    setFont('normal', 8.5);
-    doc.text('Tandatangan dan Meterai/Cap Jabatan:', ML + TW/2 + 2, qy);
+        function closeArkib2() {
+            stopArkibCamera();
+            arkib2View.classList.add('hidden');
+            mainView.classList.remove('hidden');
+        }
 
-    qy += 7;
-    setFont('normal', 8.5);
-    doc.text('Jawatan:', ML + 2, qy);
-    setFont('bold', 8);
-    doc.text(document.getElementById('b12_jawatan_pengesah').value || '', ML + 20, qy);
+        // --- ARKIB CAMERA (DYNAMC BUTTON) ---
+        btnArkibCameraAction.addEventListener('click', async () => {
+            if (!isArkibCameraOpen) {
+                // FUNGSI: BUKA KAMERA
+                try {
+                    arkibStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                    arkibVideo.srcObject = arkibStream;
+                    arkibVideo.classList.remove('hidden');
+                    arkibFrame.classList.remove('hidden');
+                    arkibPlaceholder.classList.add('hidden');
+                    
+                    // Tukar UI Butang
+                    arkibBtnText.innerText = "AMBIL GAMBAR ARKIB";
+                    btnArkibCameraAction.classList.remove('bg-slate-900');
+                    btnArkibCameraAction.classList.add('bg-blue-600');
+                    isArkibCameraOpen = true;
+                } catch (err) { alert("Gagal buka kamera arkib."); }
+            } else {
+                // FUNGSI: SNAP
+                canvas.width = arkibVideo.videoWidth;
+                canvas.height = arkibVideo.videoHeight;
+                canvas.getContext('2d').drawImage(arkibVideo, 0, 0);
+                prosesOCRArkib(canvas.toDataURL('image/jpeg'));
+                stopArkibCamera();
+            }
+        });
 
-    setFont('normal', 8.5);
-    doc.text('Tarikh:', ML + TW/2 + 2, qy);
-    setFont('bold', 8.5);
-    doc.text(new Date().toLocaleDateString('ms-MY'), ML + TW/2 + 18, qy);
+        function stopArkibCamera() {
+            if(arkibStream) arkibStream.getTracks().forEach(t => t.stop());
+            arkibVideo.classList.add('hidden');
+            arkibFrame.classList.add('hidden');
+            arkibPlaceholder.classList.remove('hidden');
+            
+            // Reset UI Butang
+            arkibBtnText.innerText = "BUKA KAMERA ARKIB";
+            btnArkibCameraAction.classList.remove('bg-blue-600');
+            btnArkibCameraAction.classList.add('bg-slate-900');
+            isArkibCameraOpen = false;
+        }
 
-    // bottom label
-    setFont('normal', 8);
-    doc.text('Arkib 12/08', PW - MR, PH - 8, { align: 'right' });
+        // --- OCR HELPERS ---
+        function extractMeterValue(text) {
+            // Cari corak angka diikuti CM (contoh: 50CM, 50 CM)
+            const cmPattern = /(\d+(\.\d+)?)\s*CM\b/i;
+            const cmMatch = text.match(cmPattern);
+            if (cmMatch) {
+                const cmVal = parseFloat(cmMatch[1]);
+                const mVal = cmVal / 100;
+                return mVal.toFixed(2) + " M.P";
+            }
 
-    // Appendix of destruction photo evidence, if any were captured
-    const photoItems = b12Photos.map((src, i) => ({ title: `Foto ${i + 1}`, photo: src }));
-    addPhotoAppendix(doc, photoItems, 'LAMPIRAN — FOTO BUKTI PEMUSNAHAN (Borang 12/08)');
+            // Fallback cari corak angka diikuti M atau METER
+            const meterPattern = /(\d+(\.\d+)?)\s*(M|METER|METRE)?\b/i;
+            const match = text.match(meterPattern);
+            if (match) {
+                 return parseFloat(match[1]).toFixed(2) + " M.P";
+            }
+            return null;
+        }
 
-    doc.save('Borang_Arkib_12-08.pdf');
-}
+        // --- OCR MAIN ---
+        function prosesOCR(source) {
+            statusContainer.classList.remove('hidden');
+            statusText.innerText = "Mengecam teks...";
+            Tesseract.recognize(source, 'msa+eng').then(({ data: { text } }) => {
+                const cleanedText = text.replace(/\n/g, ' ').toUpperCase().trim();
+                document.getElementById('input-tajuk').value = cleanedText.substring(0, 150);
+                
+                const meterVal = extractMeterValue(cleanedText);
+                if(meterVal) {
+                    document.getElementById('input-meter').value = meterVal;
+                }
+                
+                const years = cleanedText.match(/\b(19|20)\d{2}\b/g);
+                if(years && years[0]) {
+                    document.getElementById('input-tahun').value = years[0];
+                }
+                statusText.innerText = "Selesai!";
+                setTimeout(() => statusContainer.classList.add('hidden'), 2000);
+            });
+        }
 
-// ============ SURAT PDF (placeholder) ============
-async function downloadSuratPDF() {
-    alert('Fungsi Jana Surat PDF akan ditambah dalam versi akan datang.');
-}
-</script>
+        // --- OCR ARKIB 2 ---
+        function prosesOCRArkib(source) {
+            statusContainer.classList.remove('hidden');
+            statusText.innerText = "Mengecam borang...";
+            Tesseract.recognize(source, 'msa+eng').then(({ data: { text } }) => {
+                const cleanedText = text.replace(/\n/g, ' ').toUpperCase().trim();
+                const tajukInput = document.getElementById('arkib-tajuk-siri');
+                if (cleanedText.length > 0) {
+                    tajukInput.value = cleanedText.substring(0, 200);
+                }
+                
+                const meterInput = document.getElementById('arkib-meter');
+                const meterVal = extractMeterValue(cleanedText);
+                if(meterVal) {
+                    meterInput.value = meterVal;
+                }
+                
+                const years = cleanedText.match(/\b(19|20)\d{2}\b/g);
+                if(years) {
+                    if(years[0]) document.getElementById('arkib-tahun-dari').value = years[0];
+                    if(years[1]) document.getElementById('arkib-tahun-ke').value = years[1];
+                }
+                statusText.innerText = "Data Arkib Diterima!";
+                setTimeout(() => statusContainer.classList.add('hidden'), 2000);
+            });
+        }
+
+        // --- FORM HELPERS ---
+        function resetForm() {
+            document.getElementById('input-tajuk').value = "";
+            document.getElementById('input-tahun').value = "";
+            document.getElementById('input-meter').value = "";
+            document.getElementById('select-cadangan').value = "";
+            fileInputMain.value = "";
+        }
+
+        function copyAllData() {
+            const t = document.getElementById('input-tajuk').value;
+            const y = document.getElementById('input-tahun').value;
+            const m = document.getElementById('input-meter').value;
+            const c = document.getElementById('select-cadangan').value;
+            navigator.clipboard.writeText(`TAJUK: ${t}\nTAHUN: ${y}\nMETER: ${m}\nCADANGAN: ${c}`);
+            alert("Teks Utama Disalin!");
+        }
+
+        function resetArkibForm() {
+            document.getElementById('arkib-bil').value = "";
+            document.getElementById('arkib-tajuk-siri').value = "";
+            document.getElementById('arkib-tahun-dari').value = "";
+            document.getElementById('arkib-tahun-ke').value = "";
+            document.getElementById('arkib-tempoh').value = "";
+            document.getElementById('arkib-unit').value = "";
+            document.getElementById('arkib-meter').value = "";
+            fileInputArkib.value = "";
+        }
+
+        function copyArkibData() {
+            const data = `BIL: ${document.getElementById('arkib-bil').value}\n` +
+                         `TAJUK SIRI: ${document.getElementById('arkib-tajuk-siri').value}\n` +
+                         `TAHUN: ${document.getElementById('arkib-tahun-dari').value}-${document.getElementById('arkib-tahun-ke').value}\n` +
+                         `TEMPOH: ${document.getElementById('arkib-tempoh').value}\n` +
+                         `UNIT: ${document.getElementById('arkib-unit').value}\n` +
+                         `METER: ${document.getElementById('arkib-meter').value}`;
+            navigator.clipboard.writeText(data);
+            alert("Data Arkib 2 Disalin!");
+        }
+
+        // --- SIMPAN DATA (REKOD UTAMA) ---
+        async function saveToSheets() {
+            const tajuk = document.getElementById('input-tajuk').value;
+            const tahun = document.getElementById('input-tahun').value;
+            const meter = document.getElementById('input-meter').value;
+            const cadangan = document.getElementById('select-cadangan').value;
+
+            if(!tajuk) { alert("Tajuk tidak boleh kosong."); return; }
+
+            statusContainer.classList.remove('hidden');
+            statusText.innerText = "Menyimpan ke Rekod...";
+
+            const today = new Date().toLocaleDateString('ms-MY');
+
+            const params = new URLSearchParams({
+                'TARIKH': today,
+                'TAJUK_REKOD_BAHAN': tajuk,
+                'TAHUN': tahun,
+                'METER_JUMLAH': meter,
+                'CADANGAN_TINDAKAN': cadangan
+            });
+
+            fetch(URL_WEB_APP_REKOD, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            })
+            .then(() => {
+                alert("Rekod Utama Berjaya Dihantar!");
+                statusContainer.classList.add('hidden');
+                resetForm();
+            })
+            .catch(err => {
+                alert("Ralat penghantaran Rekod Utama: " + err.message);
+                statusContainer.classList.add('hidden');
+            });
+        }
+
+        // --- SIMPAN DATA (ARKIB 2) ---
+        async function saveArkib2() {
+            const bil = document.getElementById('arkib-bil').value;
+            const tajukSiri = document.getElementById('arkib-tajuk-siri').value;
+            const tahunDari = document.getElementById('arkib-tahun-dari').value;
+            const tahunKe = document.getElementById('arkib-tahun-ke').value;
+            const tempoh = document.getElementById('arkib-tempoh').value;
+            const unit = document.getElementById('arkib-unit').value;
+            const meter = document.getElementById('arkib-meter').value;
+
+            if(!tajukSiri) { alert("Tajuk Siri Arkib tidak boleh kosong."); return; }
+            if(URL_WEB_APP_ARKIB2 === 'SIlA_GANTI_DENGAN_URL_WEB_APP_ARKIB2_ANDA') {
+                alert("Sila masukkan URL Web App Arkib 2 dalam kod terlebih dahulu.");
+                return;
+            }
+
+            statusContainer.classList.remove('hidden');
+            statusText.innerText = "Menyimpan ke Arkib 2...";
+
+            // Payload mengikut susunan dalam skrip GAS Arkib 2
+            const payload = {
+                bil: bil,
+                tajukSiri: tajukSiri,
+                tahunDari: tahunDari,
+                tahunKe: tahunKe,
+                tempohPengekalan: tempoh,
+                unitRekod: unit,
+                meterPanjang: meter
+            };
+
+            fetch(URL_WEB_APP_ARKIB2, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                alert("Rekod Arkib 2 Berjaya Dihantar!");
+                statusContainer.classList.add('hidden');
+                resetArkibForm();
+            })
+            .catch(err => {
+                alert("Ralat penghantaran Arkib 2: " + err.message);
+                statusContainer.classList.add('hidden');
+            });
+        }
+    </script>
 </body>
 </html>
