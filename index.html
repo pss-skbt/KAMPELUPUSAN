@@ -2,8 +2,19 @@
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Pelupusan PSS SK Bukit Tongkat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>DISPOSA ONE</title>
+
+    <!-- ===== PWA / "install as app" support (Android + iOS) ===== -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#312e81">
+    <!-- iOS "Add to Home Screen" behaviour -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DISPOSA ONE">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" href="icon-192.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -15,6 +26,10 @@
         .active-tab { background-color: rgba(255,255,255,0.2); border-left: 4px solid #fff; }
         .logo-preview-box { width:120px;height:120px;border:2px dashed #cbd5e1;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc; }
         .logo-preview-box img { max-width:100%;max-height:100%;object-fit:contain; }
+        .mnav-item { color: #a5b4fc; }
+        @media (max-width: 767px) {
+            main { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -24,27 +39,20 @@
     <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border border-indigo-800">
         <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 text-indigo-900 rounded-full mb-4">
-                <i class="fas fa-user-shield text-2xl"></i>
+                <i class="fas fa-camera text-2xl"></i>
             </div>
-            <h1 class="text-2xl font-bold text-gray-900">Log Masuk Admin</h1>
-            <p class="text-sm text-gray-500 mt-2">Sistem E-Pelupusan PSS SK Bukit Tongkat</p>
+            <h1 class="text-2xl font-bold text-gray-900">DISPOSA ONE</h1>
+            <p class="text-sm text-gray-500 mt-2">DISPOSA ONE — PSS SK Bukit Tongkat</p>
         </div>
         <form id="login-form" onsubmit="handleLogin(event)" class="space-y-6">
             <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Nama Pengguna</label>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Nama Penuh Guru</label>
                 <div class="relative">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-user"></i></span>
-                    <input type="text" id="username" required class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="admin">
+                    <input type="text" id="username" required autocomplete="name" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="cth: Ahmad bin Ali">
                 </div>
             </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Kata Laluan</label>
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-lock"></i></span>
-                    <input type="password" id="password" required class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="••••••••">
-                </div>
-            </div>
-            <div id="login-error" class="hidden text-red-500 text-xs font-semibold text-center bg-red-50 py-2 rounded">Nama pengguna atau kata laluan salah!</div>
+            <div id="login-error" class="hidden text-red-500 text-xs font-semibold text-center bg-red-50 py-2 rounded">Sila taip nama penuh anda.</div>
             <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-lg transition-all">MASUK SISTEM</button>
         </form>
     </div>
@@ -54,8 +62,8 @@
 <div id="main-app" class="hidden flex h-screen overflow-hidden">
     <aside class="w-64 bg-indigo-900 text-white flex-shrink-0 hidden md:flex flex-col">
         <div class="p-6">
-            <h1 class="text-xl font-bold tracking-wider">E-PELUPUSAN</h1>
-            <p class="text-xs text-indigo-300 mt-1 uppercase">Admin PSS SKBT</p>
+            <h1 class="text-xl font-bold tracking-wider flex items-center gap-2"><i class="fas fa-camera"></i> DISPOSA ONE</h1>
+            <p id="sidebar-nama-guru" class="text-xs text-indigo-300 mt-1 truncate">PSS SKBT</p>
         </div>
         <nav class="mt-6 flex-1">
             <button onclick="switchTab('dashboard')" id="btn-dashboard" class="sidebar-item active-tab w-full flex items-center px-6 py-4 transition-colors"><i class="fas fa-th-large mr-3"></i> Dashboard</button>
@@ -85,7 +93,7 @@
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border">
                     <p class="text-sm text-gray-500 font-medium uppercase">Sesi Pengguna</p>
-                    <h3 class="text-3xl font-bold mt-1 text-indigo-600">Admin</h3>
+                    <h3 id="stat-sesi-nama" class="text-xl font-bold mt-1 text-indigo-600 truncate">Guru</h3>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border">
                     <p class="text-sm text-gray-500 font-medium uppercase">Status Sistem</p>
@@ -200,6 +208,7 @@
                                         <th class="p-3 border-b w-24">Meter Panjang/Jumlah (8)</th>
                                         <th class="p-3 border-b w-28">Cadangan Pelupusan (9)</th>
                                         <th class="p-3 border-b w-28">Catatan (10)</th>
+                                        <th class="p-3 border-b w-20 text-center">Foto Kerosakan</th>
                                         <th class="p-3 border-b w-8"></th>
                                     </tr>
                                 </thead>
@@ -355,6 +364,17 @@
                             </div>
                         </div>
 
+                        <!-- BAHAGIAN E: Foto Bukti Pemusnahan -->
+                        <div class="mb-6 p-4 bg-rose-50 rounded-xl border border-rose-100">
+                            <h4 class="text-xs font-bold text-rose-500 uppercase mb-3 tracking-wider">Foto Bukti Pemusnahan</h4>
+                            <p class="text-xs text-gray-500 mb-4">Ambil gambar semasa proses pemusnahan dilakukan sebagai bukti sokongan (contoh: gambar sebelum, semasa dan selepas dimusnahkan).</p>
+                            <div id="b12-photo-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3"></div>
+                            <label class="inline-flex items-center gap-2 cursor-pointer bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                                <i class="fas fa-camera"></i> Ambil / Muat Naik Foto
+                                <input type="file" accept="image/*" capture="environment" multiple class="hidden" onchange="handleB12Photo(event)">
+                            </label>
+                        </div>
+
                         <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
                             <button onclick="saveRecord('borang12')" class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700"><i class="fas fa-save"></i> Simpan</button>
                             <button onclick="downloadBorang12PDF()" class="bg-red-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-red-700"><i class="fas fa-file-pdf"></i> Muat Turun Borang 12/08</button>
@@ -383,29 +403,64 @@
     </main>
 </div>
 
+<!-- Mobile bottom navigation -->
+<nav id="mobile-nav" class="md:hidden fixed bottom-0 left-0 right-0 bg-indigo-900 text-white flex justify-around items-stretch z-40 border-t border-indigo-800" style="padding-bottom: env(safe-area-inset-bottom);">
+    <button onclick="switchTab('dashboard')" id="mbtn-dashboard" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-th-large text-lg"></i><span class="text-[9px] font-semibold">Utama</span></button>
+    <button onclick="switchTab('surat')" id="mbtn-surat" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-envelope text-lg"></i><span class="text-[9px] font-semibold">Surat</span></button>
+    <button onclick="switchTab('borang')" id="mbtn-borang" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-file-alt text-lg"></i><span class="text-[9px] font-semibold">B.9</span></button>
+    <button onclick="switchTab('borang2')" id="mbtn-borang2" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-file-signature text-lg"></i><span class="text-[9px] font-semibold">B.2</span></button>
+    <button onclick="switchTab('borang12')" id="mbtn-borang12" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-stamp text-lg"></i><span class="text-[9px] font-semibold">B.12</span></button>
+    <button onclick="switchTab('list')" id="mbtn-list" class="mnav-item flex-1 flex flex-col items-center justify-center py-2 gap-1"><i class="fas fa-list text-lg"></i><span class="text-[9px] font-semibold">Senarai</span></button>
+</nav>
+
+<!-- Photo lightbox modal -->
+<div id="photo-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6" onclick="closePhotoModal()">
+    <img id="photo-modal-img" src="" class="max-w-full max-h-full rounded-lg shadow-2xl">
+    <button class="absolute top-4 right-4 text-white text-3xl"><i class="fas fa-times-circle"></i></button>
+</div>
+
 <script>
 let records = JSON.parse(localStorage.getItem('pss_records_v5')) || [];
 let schoolLogoBase64 = localStorage.getItem('pss_school_logo') || null;
 
+// Register service worker so the app can be "installed" on Android/iOS home
+// screen and keep working with no signal (e.g. inside a store/library where
+// wifi is patchy while taking damage photos).
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW gagal daftar:', err));
+    });
+}
+
 // ============ AUTH ============
 function handleLogin(e) {
     e.preventDefault();
-    const u = document.getElementById('username').value;
-    const p = document.getElementById('password').value;
-    if (u === 'admin' && p === 'admin123') {
+    const nama = document.getElementById('username').value.trim();
+    if (nama.length >= 2) {
         sessionStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('namaGuru', nama);
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
+        applyLoggedInName();
     } else {
         document.getElementById('login-error').classList.remove('hidden');
     }
 }
-function handleLogout() { sessionStorage.removeItem('isLoggedIn'); location.reload(); }
+function handleLogout() { sessionStorage.removeItem('isLoggedIn'); sessionStorage.removeItem('namaGuru'); location.reload(); }
+
+function applyLoggedInName() {
+    const nama = sessionStorage.getItem('namaGuru') || 'Guru';
+    const sesiEl = document.getElementById('stat-sesi-nama');
+    if (sesiEl) sesiEl.innerText = nama;
+    const sidebarNama = document.getElementById('sidebar-nama-guru');
+    if (sidebarNama) sidebarNama.innerText = nama;
+}
 
 window.onload = () => {
     if (sessionStorage.getItem('isLoggedIn') === 'true') {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
+        applyLoggedInName();
     }
     document.getElementById('current-date').innerText = new Intl.DateTimeFormat('ms-MY', { dateStyle: 'full' }).format(new Date());
     if (schoolLogoBase64) updateLogoPreview(schoolLogoBase64);
@@ -413,6 +468,7 @@ window.onload = () => {
     addItem('borang2');
     updateStats();
     renderRecords();
+    renderB12Photos();
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('s_tarikh_surat').value = today;
 };
@@ -422,11 +478,17 @@ function switchTab(tab) {
     ['dashboard','surat','borang','borang2','borang12','list'].forEach(t => {
         document.getElementById(`view-${t}`).classList.add('hidden');
         document.getElementById(`btn-${t}`).classList.remove('active-tab');
+        const m = document.getElementById(`mbtn-${t}`);
+        if (m) m.classList.remove('text-white','bg-indigo-700/50');
+        if (m) m.classList.add('text-indigo-300');
     });
     document.getElementById(`view-${tab}`).classList.remove('hidden');
     document.getElementById(`btn-${tab}`).classList.add('active-tab');
+    const activeM = document.getElementById(`mbtn-${tab}`);
+    if (activeM) { activeM.classList.add('text-white','bg-indigo-700/50'); activeM.classList.remove('text-indigo-300'); }
     const titles = { dashboard:'Dashboard', surat:'Jana Surat Iringan', borang:'Jana Borang 9/08', borang2:'Jana Borang 2/08', borang12:'Jana Borang 12/08', list:'Senarai Rekod' };
     document.getElementById('tab-title').innerText = titles[tab] || tab;
+    window.scrollTo(0,0);
 }
 
 // ============ LOGO ============
@@ -437,11 +499,47 @@ function previewLogo(e) {
 function removeLogo() { schoolLogoBase64 = null; localStorage.removeItem('pss_school_logo'); document.getElementById('logo-preview-container').innerHTML = `<span class="text-gray-400 text-[10px] text-center px-2">Tiada Logo Sekolah</span>`; }
 function updateLogoPreview(b) { document.getElementById('logo-preview-container').innerHTML = `<img src="${b}">`; }
 
-// ============ TABLE ROWS ============
+// ============ IMAGE COMPRESSION HELPER ============
+// Resizes + compresses a captured photo before storing it, so photos taken
+// on a phone camera (often 3000px+, several MB) don't blow past localStorage limits.
+function compressImage(file, maxDim = 900, quality = 0.65) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > height && width > maxDim) { height *= maxDim / width; width = maxDim; }
+                else if (height > maxDim) { width *= maxDim / height; height = maxDim; }
+                const canvas = document.createElement('canvas');
+                canvas.width = width; canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function openPhotoModal(src) {
+    document.getElementById('photo-modal-img').src = src;
+    document.getElementById('photo-modal').classList.remove('hidden');
+}
+function closePhotoModal() { document.getElementById('photo-modal').classList.add('hidden'); }
+
+// ============ TABLE ROWS (Borang 9 / Borang 2) ============
+let rowUidCounter = 0;
+
 function addItem(type, data = {}) {
     if (type === 'borang') {
         const tbody = document.getElementById('b_items-tbody');
+        const uid = 'r' + (rowUidCounter++);
         const row = document.createElement('tr');
+        row.dataset.uid = uid;
+        row.dataset.foto = data.foto || '';
         row.innerHTML = `
             <td class="p-2 border-b text-center bil-num font-bold text-gray-400">${tbody.rows.length + 1}</td>
             <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i-tajuk" value="${data.tajuk || ''}"></td>
@@ -449,6 +547,15 @@ function addItem(type, data = {}) {
             <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i-meter" value="${data.meter || '0.01'}"></td>
             <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i-cadangan" value="${data.cadangan || 'MUSNAH'}"></td>
             <td class="p-2 border-b"><input type="text" class="w-full p-1 border rounded text-xs i-catatan" value="${data.catatan || 'ROSAK/UZUR'}"></td>
+            <td class="p-2 border-b text-center">
+                <div class="flex flex-col items-center gap-1">
+                    <img class="i-foto-preview w-9 h-9 object-cover rounded border cursor-pointer ${data.foto ? '' : 'hidden'}" src="${data.foto || ''}" onclick="openPhotoModal(this.src)">
+                    <label class="cursor-pointer text-indigo-500 hover:text-indigo-700 text-[10px] font-bold flex items-center gap-1">
+                        <i class="fas fa-camera"></i>
+                        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handleRowPhoto(event,'${uid}','borang')">
+                    </label>
+                </div>
+            </td>
             <td class="p-2 border-b"><button onclick="this.parentElement.parentElement.remove();updateBil('borang');" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>`;
         tbody.appendChild(row);
         updateBil('borang');
@@ -466,6 +573,24 @@ function addItem(type, data = {}) {
             <td class="p-2 border-b"><button onclick="this.parentElement.parentElement.remove();updateBil('borang2');" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>`;
         tbody.appendChild(row);
         updateBil('borang2');
+    }
+}
+
+// Captures + compresses a damage photo ("Foto Kerosakan") for a Borang 9 row,
+// stores it on the row's dataset, and shows a thumbnail preview.
+async function handleRowPhoto(e, uid, type) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+        const dataUrl = await compressImage(file);
+        const row = document.querySelector(`tr[data-uid="${uid}"]`);
+        if (!row) return;
+        row.dataset.foto = dataUrl;
+        const img = row.querySelector('.i-foto-preview');
+        img.src = dataUrl;
+        img.classList.remove('hidden');
+    } catch (err) {
+        alert('Gagal memproses foto: ' + err.message);
     }
 }
 
@@ -493,17 +618,74 @@ function handleCSVUpload(e, type) {
     reader.readAsText(file);
 }
 
+// ============ BORANG 12 PHOTO EVIDENCE (Pelupusan / Pemusnahan) ============
+let b12Photos = JSON.parse(sessionStorage.getItem('pss_b12_photos') || '[]');
+
+function persistB12Photos() {
+    try { sessionStorage.setItem('pss_b12_photos', JSON.stringify(b12Photos)); }
+    catch (err) { console.warn('Tidak dapat simpan sesi foto (mungkin terlalu besar):', err); }
+}
+
+async function handleB12Photo(e) {
+    const files = Array.from(e.target.files || []);
+    for (const file of files) {
+        try {
+            const dataUrl = await compressImage(file, 900, 0.6);
+            b12Photos.push(dataUrl);
+        } catch (err) { console.warn('Gagal proses foto:', err); }
+    }
+    persistB12Photos();
+    renderB12Photos();
+    e.target.value = '';
+}
+
+function removeB12Photo(idx) {
+    b12Photos.splice(idx, 1);
+    persistB12Photos();
+    renderB12Photos();
+}
+
+function renderB12Photos() {
+    const grid = document.getElementById('b12-photo-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    if (b12Photos.length === 0) {
+        grid.innerHTML = `<span class="col-span-full text-xs text-gray-400 italic">Tiada foto lagi.</span>`;
+        return;
+    }
+    b12Photos.forEach((src, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'relative';
+        wrap.innerHTML = `
+            <img src="${src}" class="w-full h-20 object-cover rounded-lg border cursor-pointer" onclick="openPhotoModal('${src}')">
+            <button onclick="removeB12Photo(${idx})" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button>`;
+        grid.appendChild(wrap);
+    });
+}
+
 // ============ RECORDS ============
 function saveRecord(type) {
     const id = Date.now();
     let ref = '';
+    let extra = {};
     if (type === 'surat') ref = document.getElementById('s_no_rujukan').value;
-    else if (type === 'borang') ref = document.getElementById('b_pegawai').value || 'Borang 9/08';
+    else if (type === 'borang') {
+        ref = document.getElementById('b_pegawai').value || 'Borang 9/08';
+        const fotos = Array.from(document.querySelectorAll('#b_items-tbody tr')).map(r => r.dataset.foto || '').filter(Boolean);
+        extra.jumlahFoto = fotos.length;
+    }
     else if (type === 'borang2') ref = document.getElementById('b2_pegawai').value || 'Borang 2/08';
-    else if (type === 'borang12') ref = document.getElementById('b12_no_rujukan').value || 'Borang 12/08';
-    const data = { id, type, date: new Date().toLocaleDateString('ms-MY'), ref };
+    else if (type === 'borang12') {
+        ref = document.getElementById('b12_no_rujukan').value || 'Borang 12/08';
+        extra.jumlahFoto = b12Photos.length;
+    }
+    const data = { id, type, date: new Date().toLocaleDateString('ms-MY'), ref, ...extra };
     records.unshift(data);
-    localStorage.setItem('pss_records_v5', JSON.stringify(records));
+    try {
+        localStorage.setItem('pss_records_v5', JSON.stringify(records));
+    } catch (err) {
+        alert('Amaran: ruang simpanan peranti hampir penuh. Rekod disimpan tanpa sebahagian data foto.');
+    }
     updateStats(); renderRecords();
     alert('Rekod berjaya disimpan!');
 }
@@ -529,6 +711,38 @@ function drawText(doc, text, x, y, maxWidth, fontSize = 8) {
     const lines = doc.splitTextToSize(String(text || ''), maxWidth);
     doc.text(lines, x, y);
     return y + (lines.length - 1) * (fontSize * 0.3528 * 1.2);
+}
+
+// Adds an appendix page (or pages) of item-photo evidence to a jsPDF doc.
+// items = [{ title, photo (dataURL) }]
+function addPhotoAppendix(doc, items, appendixTitle) {
+    const withPhotos = items.filter(it => it.photo);
+    if (withPhotos.length === 0) return;
+    const PW = 210, PH = 297, ML = 15, MR = 15, TW = PW - ML - MR;
+    doc.addPage();
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+    doc.text(appendixTitle, PW / 2, 16, { align: 'center' });
+
+    const cols = 2, cellW = TW / cols, cellH = 75;
+    let x = ML, y = 24, col = 0;
+    withPhotos.forEach((it, idx) => {
+        if (y + cellH > PH - 15) {
+            doc.addPage();
+            y = 20; x = ML; col = 0;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+            doc.text(appendixTitle + ' (samb.)', PW / 2, 14, { align: 'center' });
+        }
+        const cx = ML + col * cellW;
+        try {
+            doc.addImage(it.photo, 'JPEG', cx + 3, y, cellW - 6, cellH - 12);
+        } catch (err) { /* ignore bad image */ }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+        const capLines = doc.splitTextToSize(`${idx + 1}. ${it.title || ''}`, cellW - 6);
+        doc.text(capLines, cx + 3, y + cellH - 8);
+
+        col++;
+        if (col >= cols) { col = 0; x = ML; y += cellH; }
+    });
 }
 
 // ============================================================
@@ -663,6 +877,7 @@ function downloadBorang9PDF() {
 
     // ---- DATA ROWS ----
     const items = document.querySelectorAll('#b_items-tbody tr');
+    const photoAppendixItems = [];
     items.forEach((tr, idx) => {
         y += ROW_H;
         // Draw row border
@@ -686,6 +901,8 @@ function downloadBorang9PDF() {
             const lines = doc.splitTextToSize(val, maxW);
             doc.text(lines[0], cx, y + 6, { align });
         });
+
+        if (tr.dataset.foto) photoAppendixItems.push({ title: vals[1], photo: tr.dataset.foto });
     });
 
     // Add empty rows if fewer than 8 items
@@ -727,6 +944,9 @@ function downloadBorang9PDF() {
     // Bottom "Arkib 9/08" right aligned
     setFont('normal', 8);
     doc.text('Arkib 9/08', PW - MR, PH - 8, { align: 'right' });
+
+    // Appendix of damage photos, if any were captured
+    addPhotoAppendix(doc, photoAppendixItems, 'LAMPIRAN — FOTO KEROSAKAN BAHAN (Borang 9/08)');
 
     doc.save('Borang_Arkib_9-08.pdf');
 }
@@ -1204,6 +1424,10 @@ function downloadBorang12PDF() {
     setFont('normal', 8);
     doc.text('Arkib 12/08', PW - MR, PH - 8, { align: 'right' });
 
+    // Appendix of destruction photo evidence, if any were captured
+    const photoItems = b12Photos.map((src, i) => ({ title: `Foto ${i + 1}`, photo: src }));
+    addPhotoAppendix(doc, photoItems, 'LAMPIRAN — FOTO BUKTI PEMUSNAHAN (Borang 12/08)');
+
     doc.save('Borang_Arkib_12-08.pdf');
 }
 
@@ -1211,3 +1435,6 @@ function downloadBorang12PDF() {
 async function downloadSuratPDF() {
     alert('Fungsi Jana Surat PDF akan ditambah dalam versi akan datang.');
 }
+</script>
+</body>
+</html>
