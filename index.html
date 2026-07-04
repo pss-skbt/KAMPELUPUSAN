@@ -21,6 +21,8 @@
 
     <!-- Memuatkan Tesseract.js daripada CDN -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- ZXing untuk imbasan QR/Barcode Kod Aset -->
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons untuk estetika UI -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -100,6 +102,13 @@
         .corner-tr { top: 0; right: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 12px; }
         .corner-bl { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 12px; }
         .corner-br { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 12px; }
+
+        .jenis-btn.active { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+        .tahap-btn.active { border-color: #0f172a; background: #0f172a; color: #fff; }
+        .status-step > div:first-child { background: #e2e8f0; color: #94a3b8; }
+        .status-step.active > div:first-child { background: #1d4ed8; color: #fff; }
+        .status-step.active span { color: #1d4ed8; }
+        .status-step span { color: #94a3b8; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-900">
@@ -114,10 +123,18 @@
                 <h1 class="text-2xl font-extrabold tracking-tight uppercase">DISPOSA ONE</h1>
                 <p class="text-sm text-slate-500 mt-2 font-medium">Kamera Laporan Kerosakan dan Pelupusan</p>
             </div>
-            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-5">
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Nama Penuh Guru</label>
+                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Nama Penuh</label>
                     <input type="text" id="login-nama" required autocomplete="name" placeholder="cth: Ahmad bin Ali" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Jawatan</label>
+                    <input type="text" id="login-jawatan" placeholder="cth: Guru ICT" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">E-mel</label>
+                    <input type="email" id="login-email" placeholder="cth: ahmad@moe-dl.edu.my" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all">
                 </div>
                 <div id="login-error" class="hidden text-rose-600 text-xs font-bold text-center bg-rose-50 py-2 rounded-xl">Sila taip nama penuh anda.</div>
                 <button type="submit" class="btn-primary w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg uppercase tracking-tight">Masuk Sistem</button>
@@ -144,43 +161,103 @@
         </div>
 
         <div class="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/60 overflow-hidden border border-slate-100 glass-effect">
-            <div class="relative bg-slate-900 aspect-[4/3] flex items-center justify-center overflow-hidden">
-                <video id="camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
-                <canvas id="capture-canvas" class="hidden"></canvas>
-                <div id="camera-overlay" class="absolute inset-0 border-2 border-dashed border-white/20 m-6 md:m-12 pointer-events-none rounded-2xl hidden"></div>
-                <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
-                    <div class="bg-slate-800/50 p-5 rounded-full mb-4">
-                        <i data-lucide="image" class="w-10 h-10 opacity-40"></i>
-                    </div>
-                    <p class="text-sm font-medium text-slate-500">Sedia Untuk Imbasan</p>
+
+            <div id="status-container" class="m-5 md:m-8 mb-0 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-between hidden animate-pulse">
+                <div class="flex items-center space-x-3">
+                    <div class="loader"></div>
+                    <span id="status-text" class="text-sm font-bold text-blue-700 uppercase tracking-wide">Memproses...</span>
                 </div>
             </div>
 
-            <div class="p-5 md:p-8">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-                    <button id="btn-start-camera" class="btn-primary flex items-center justify-center space-x-2 bg-slate-900 text-white py-4 px-6 rounded-2xl font-bold hover:bg-slate-800 shadow-lg w-full">
-                        <i data-lucide="video" class="w-5 h-5"></i>
-                        <span>BUKA KAMERA</span>
-                    </button>
-                    <button id="btn-snap" class="btn-primary flex items-center justify-center space-x-2 bg-blue-600 text-white py-4 px-6 rounded-2xl font-bold hover:bg-blue-700 shadow-xl hidden w-full">
-                        <i data-lucide="aperture" class="w-5 h-5"></i>
-                        <span>Ambil gambar</span>
-                    </button>
-                    <label for="gambar-input" class="btn-primary cursor-pointer flex items-center justify-center space-x-2 bg-slate-100 text-slate-700 py-4 px-6 rounded-2xl font-bold hover:bg-slate-200 w-full">
-                        <i data-lucide="upload" class="w-5 h-5"></i>
-                        <span>MUAT NAIK FAIL</span>
-                    </label>
-                    <input type="file" id="gambar-input" accept="image/*" class="hidden">
-                </div>
+            <div class="p-5 md:p-8 space-y-8">
 
-                <div id="status-container" class="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-between hidden animate-pulse">
-                    <div class="flex items-center space-x-3">
-                        <div class="loader"></div>
-                        <span id="status-text" class="text-sm font-bold text-blue-700 uppercase tracking-wide">Memproses...</span>
+                <!-- 1. MAKLUMAT PELAPOR (AUTO) -->
+                <section>
+                    <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">1</span> Maklumat Pelapor (Auto)</h3>
+                    <div class="grid grid-cols-2 gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm">
+                        <div><span class="block text-[10px] font-black text-slate-400 uppercase">Nama</span><span id="rep-nama" class="font-bold">-</span></div>
+                        <div><span class="block text-[10px] font-black text-slate-400 uppercase">Jawatan</span><span id="rep-jawatan" class="font-bold">-</span></div>
+                        <div><span class="block text-[10px] font-black text-slate-400 uppercase">Tarikh</span><span id="rep-tarikh" class="font-bold">-</span></div>
+                        <div><span class="block text-[10px] font-black text-slate-400 uppercase">Masa</span><span id="rep-masa" class="font-bold">-</span></div>
+                        <div class="col-span-2"><span class="block text-[10px] font-black text-slate-400 uppercase">E-mel</span><span id="rep-email" class="font-bold break-all">-</span></div>
+                        <div class="col-span-2"><span class="block text-[10px] font-black text-slate-400 uppercase">Lokasi</span><span id="rep-lokasi" class="font-bold">-</span></div>
                     </div>
-                </div>
+                </section>
 
-                <div class="space-y-6">
+                <!-- 2. LOKASI KEROSAKAN -->
+                <section>
+                    <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">2</span> Lokasi Kerosakan</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <select id="sel-lokasi" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                            <option value="">Sila Pilih</option>
+                            <option>Makmal Komputer</option>
+                            <option>Bilik Guru</option>
+                            <option>Kelas</option>
+                            <option>Pejabat</option>
+                            <option>Stor</option>
+                            <option>Pusat Sumber Sekolah</option>
+                            <option>Dewan / Padang</option>
+                            <option>Lain-lain</option>
+                        </select>
+                        <input type="text" id="input-bilik" placeholder="Bilik / Makmal (cth: Makmal Komputer 1)" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                    </div>
+                </section>
+
+                <!-- 3. JENIS ASET -->
+                <section>
+                    <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">3</span> Jenis Aset</h3>
+                    <div class="grid grid-cols-4 sm:grid-cols-7 gap-2" id="jenis-aset-grid">
+                        <button type="button" data-jenis="ICT" onclick="pilihJenisAset('ICT')" class="jenis-btn flex flex-col items-center justify-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><i data-lucide="monitor" class="w-5 h-5"></i>ICT</button>
+                        <button type="button" data-jenis="Perabot" onclick="pilihJenisAset('Perabot')" class="jenis-btn flex flex-col items-center justify-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><i data-lucide="armchair" class="w-5 h-5"></i>Perabot</button>
+                        <button type="button" data-jenis="Elektrik" onclick="pilihJenisAset('Elektrik')" class="jenis-btn flex flex-col items-center justify-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><i data-lucide="zap" class="w-5 h-5"></i>Elektrik</button>
+                        <button type="button" data-jenis="Bangunan" onclick="pilihJenisAset('Bangunan')" class="jenis-btn flex flex-col items-center justify-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><i data-lucide="building-2" class="w-5 h-5"></i>Bgn</button>
+                        <button type="button" data-jenis="Sukan" onclick="pilihJenisAset('Sukan')" class="jenis-btn flex flex-col items-center justify-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><i data-lucide="dumbbell" class="w-5 h-5"></i>Sukan</button>
+                        <button type="button" data-jenis="PSS" onclick="pilihJenisAset('PSS')" class="jenis-btn flex flex-col items-center justify-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><i data-lucide="library" class="w-5 h-5"></i>PSS</button>
+                        <button type="button" data-jenis="Buku" onclick="pilihJenisAset('Buku')" class="jenis-btn flex flex-col items-center justify-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><i data-lucide="book" class="w-5 h-5"></i>Buku</button>
+                    </div>
+                </section>
+
+                <!-- 4a. MAKLUMAT BUKU (conditional) -->
+                <section id="section-buku" class="hidden space-y-4">
+                    <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-1"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">4</span> Maklumat Buku</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <select id="buku-kategori" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                            <option value="">Kategori Buku</option>
+                            <option>Buku Teks</option>
+                            <option>Buku Rujukan</option>
+                            <option>Buku Bacaan</option>
+                            <option>Majalah</option>
+                        </select>
+                        <select id="buku-mata-pelajaran" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                            <option value="">Mata Pelajaran</option>
+                            <option>Bahasa Melayu</option>
+                            <option>Bahasa Inggeris</option>
+                            <option>Matematik</option>
+                            <option>Sains</option>
+                            <option>Sejarah</option>
+                            <option>Pendidikan Islam</option>
+                            <option>Lain-lain</option>
+                        </select>
+                    </div>
+                    <input type="text" id="buku-tajuk" placeholder="Tajuk Buku" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 uppercase">
+                    <input type="text" id="buku-penerbit" placeholder="Penerbit" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" id="buku-isbn" placeholder="ISBN / Kod Buku" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                        <input type="number" id="buku-tahun-terbit" placeholder="Tahun Terbit" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                        <div class="relative">
+                            <input type="number" id="buku-jumlah-rosak" placeholder="Jumlah Rosak" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">naskah</span>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm font-bold text-slate-600">
+                        <input type="checkbox" id="buku-tidak-boleh-guna" class="w-4 h-4 rounded text-blue-600">
+                        Buku fizikal rosak/terkoyak/tidak boleh digunakan
+                    </label>
+                </section>
+
+                <!-- 4b. MAKLUMAT ASET AM (conditional - bukan buku) -->
+                <section id="section-aset-am" class="space-y-6">
+                    <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-1"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">4</span> Maklumat Aset</h3>
                     <div class="group">
                         <label class="flex items-center space-x-2 text-xs font-black text-slate-500 mb-2 ml-1 uppercase tracking-widest">
                             <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
@@ -188,7 +265,6 @@
                         </label>
                         <input type="text" id="input-tajuk" placeholder="..." class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-bold outline-none focus:border-blue-500 transition-all uppercase text-lg">
                     </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="group">
                             <label class="flex items-center space-x-2 text-xs font-black text-slate-500 mb-2 ml-1 uppercase tracking-widest">
@@ -205,7 +281,6 @@
                             <input type="text" id="input-meter" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-slate-800 font-bold focus:border-blue-500 outline-none transition-all text-lg">
                         </div>
                     </div>
-
                     <div class="group">
                         <label class="flex items-center space-x-2 text-xs font-black text-slate-500 mb-2 ml-1 uppercase tracking-widest">
                             <i data-lucide="check-circle" class="w-4 h-4 text-blue-600"></i>
@@ -215,40 +290,183 @@
                             <option value="">Sila Pilih</option>
                             <option value="MUSNAH">MUSNAH</option>
                             <option value="KITAR SEMULA">KITAR SEMULA</option>
-                            <option value="DERMA/SUMBANGAN">KITAR SEMULA</option>
-                            <option value="JUALAN/LELONGAN">KITAR SEMULA</option>
+                            <option value="DERMA/SUMBANGAN">DERMA/SUMBANGAN</option>
+                            <option value="JUALAN/LELONGAN">JUALAN/LELONGAN</option>
                         </select>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-3 pt-4">
-                        <button onclick="resetForm()" class="btn-primary flex items-center justify-center space-x-2 bg-rose-50 text-rose-600 py-5 px-4 rounded-2xl font-black uppercase tracking-tight">
-                            <i data-lucide="refresh-ccw" class="w-5 h-5"></i>
-                            <span>MULA SEMULA</span>
-                        </button>
-                        <button onclick="copyAllData()" class="btn-primary flex items-center justify-center space-x-2 bg-slate-100 text-slate-700 py-5 px-4 rounded-2xl font-black uppercase tracking-tight">
-                            <i data-lucide="clipboard" class="w-5 h-5"></i>
-                            <span>SALIN TEKS</span>
-                        </button>
+                    <!-- Bantuan imbasan OCR pilihan -->
+                    <div class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-4">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Imbas Label / Tajuk Secara Automatik (OCR) — Pilihan</p>
+                        <div class="relative bg-slate-900 aspect-[4/3] flex items-center justify-center overflow-hidden rounded-xl mb-3">
+                            <video id="camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
+                            <canvas id="capture-canvas" class="hidden"></canvas>
+                            <div id="camera-overlay" class="absolute inset-0 border-2 border-dashed border-white/20 m-6 pointer-events-none rounded-2xl hidden"></div>
+                            <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+                                <i data-lucide="image" class="w-8 h-8 opacity-40 mb-2"></i>
+                                <p class="text-xs font-medium text-slate-500">Sedia Untuk Imbasan</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <button id="btn-start-camera" class="btn-primary flex items-center justify-center gap-2 bg-slate-900 text-white py-3 px-3 rounded-xl font-bold text-xs">
+                                <i data-lucide="video" class="w-4 h-4"></i><span>BUKA KAMERA</span>
+                            </button>
+                            <button id="btn-snap" class="btn-primary flex items-center justify-center gap-2 bg-blue-600 text-white py-3 px-3 rounded-xl font-bold text-xs hidden">
+                                <i data-lucide="aperture" class="w-4 h-4"></i><span>AMBIL GAMBAR</span>
+                            </button>
+                            <label for="gambar-input" class="btn-primary cursor-pointer flex items-center justify-center gap-2 bg-slate-100 text-slate-700 py-3 px-3 rounded-xl font-bold text-xs">
+                                <i data-lucide="upload" class="w-4 h-4"></i><span>MUAT NAIK</span>
+                            </label>
+                            <input type="file" id="gambar-input" accept="image/*" class="hidden">
+                        </div>
                     </div>
+                </section>
 
-                    <button id="btn-save" onclick="saveToSheets()" class="btn-primary flex items-center justify-center space-x-2 bg-emerald-600 text-white py-5 px-4 rounded-2xl font-black hover:bg-emerald-700 w-full shadow-lg shadow-emerald-100">
-                        <i data-lucide="send" class="w-5 h-5"></i>
-                        <span>SIMPAN REKOD</span>
+                <!-- 5. KOD ASET / INVENTORI -->
+                <section>
+                    <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">5</span> Kod Aset / Inventori</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button type="button" onclick="openQrScanner()" class="btn-primary flex items-center justify-center gap-2 bg-slate-900 text-white py-4 rounded-2xl font-black text-sm">
+                            <i data-lucide="scan-line" class="w-5 h-5"></i> SCAN QR / BARCODE
+                        </button>
+                        <input type="text" id="input-kod-aset" placeholder="atau taip Kod Aset (Manual)" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                    </div>
+                </section>
+
+                <!-- 6. GAMBAR KEROSAKAN -->
+                <section>
+                    <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">6</span> Gambar Kerosakan (Maksimum 3 Gambar)</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="text-center">
+                            <div class="aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center mb-1 relative">
+                                <img id="foto-utama-preview" class="hidden w-full h-full object-cover" onclick="openPhotoModal(this.src)">
+                                <i id="foto-utama-icon" data-lucide="camera" class="w-6 h-6 text-slate-300"></i>
+                            </div>
+                            <label class="text-[10px] font-black text-blue-600 uppercase cursor-pointer">Utama<input type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFotoKerosakan(event,'utama')"></label>
+                        </div>
+                        <div class="text-center">
+                            <div class="aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center mb-1 relative">
+                                <img id="foto-tambahan-preview" class="hidden w-full h-full object-cover" onclick="openPhotoModal(this.src)">
+                                <i id="foto-tambahan-icon" data-lucide="camera" class="w-6 h-6 text-slate-300"></i>
+                            </div>
+                            <label class="text-[10px] font-black text-blue-600 uppercase cursor-pointer">Tambahan<input type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFotoKerosakan(event,'tambahan')"></label>
+                        </div>
+                        <div class="text-center">
+                            <div class="aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center mb-1 relative">
+                                <img id="foto-closeup-preview" class="hidden w-full h-full object-cover" onclick="openPhotoModal(this.src)">
+                                <i id="foto-closeup-icon" data-lucide="camera" class="w-6 h-6 text-slate-300"></i>
+                            </div>
+                            <label class="text-[10px] font-black text-blue-600 uppercase cursor-pointer">Close Up<input type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFotoKerosakan(event,'closeup')"></label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 7. TAHAP KEROSAKAN -->
+                <section>
+                    <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">7</span> Tahap Kerosakan</h3>
+                    <div class="grid grid-cols-4 gap-2" id="tahap-grid">
+                        <button type="button" data-tahap="Ringan" onclick="pilihTahap('Ringan')" class="tahap-btn flex flex-col items-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><span class="w-3 h-3 rounded-full bg-emerald-500"></span>Ringan</button>
+                        <button type="button" data-tahap="Sederhana" onclick="pilihTahap('Sederhana')" class="tahap-btn flex flex-col items-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><span class="w-3 h-3 rounded-full bg-amber-400"></span>Sederhana</button>
+                        <button type="button" data-tahap="Teruk" onclick="pilihTahap('Teruk')" class="tahap-btn flex flex-col items-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase"><span class="w-3 h-3 rounded-full bg-orange-500"></span>Teruk</button>
+                        <button type="button" data-tahap="Tidak Boleh Digunakan" onclick="pilihTahap('Tidak Boleh Digunakan')" class="tahap-btn flex flex-col items-center gap-1 py-3 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[10px] uppercase text-center leading-tight"><span class="w-3 h-3 rounded-full bg-rose-600"></span>Tidak Boleh Digunakan</button>
+                    </div>
+                </section>
+
+                <!-- 8 & 10. PENERANGAN + KEUTAMAAN -->
+                <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">8</span> Penerangan Ringkas</h3>
+                        <textarea id="input-penerangan" maxlength="300" oninput="document.getElementById('char-count').innerText = this.value.length" rows="4" placeholder="cth: Buku basah dan beberapa halaman terkoyak..." class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-medium outline-none focus:border-blue-500"></textarea>
+                        <p class="text-right text-[10px] font-bold text-slate-300 mt-1"><span id="char-count">0</span>/300</p>
+                        <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3 mt-6"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">9</span> Anggaran Kos Pembaikan/Pelupusan (RM)</h3>
+                        <input type="number" id="input-anggaran-kos" min="0" step="0.01" placeholder="cth: 150.00" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">10</span> Tahap Keutamaan</h3>
+                        <select id="select-keutamaan" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                            <option value="">Sila Pilih</option>
+                            <option>Segera</option>
+                            <option>Baiki</option>
+                            <option>Pelupusan</option>
+                            <option>Biasa</option>
+                        </select>
+                        <h3 class="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-3 mt-6"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">11</span> Hantar Kepada (Auto)</h3>
+                        <select id="select-hantar-kepada" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold outline-none focus:border-blue-500">
+                            <option>Penyelaras Aset</option>
+                            <option>Penyelaras ICT</option>
+                            <option>Guru Perpustakaan & Media</option>
+                            <option>Guru Besar</option>
+                        </select>
+                    </div>
+                </section>
+
+                <div class="grid grid-cols-2 gap-3 pt-4">
+                    <button onclick="resetForm()" class="btn-primary flex items-center justify-center space-x-2 bg-rose-50 text-rose-600 py-5 px-4 rounded-2xl font-black uppercase tracking-tight">
+                        <i data-lucide="refresh-ccw" class="w-5 h-5"></i>
+                        <span>MULA SEMULA</span>
                     </button>
-
-                    <!-- Butang Preview Data Utama -->
-                    <button onclick="previewDataRekod()" class="btn-primary flex items-center justify-center space-x-2 bg-amber-500 text-white py-5 px-4 rounded-2xl font-black hover:bg-amber-600 w-full shadow-lg shadow-amber-100 uppercase tracking-tight">
-                        <i data-lucide="eye" class="w-5 h-5"></i>
-                        <span>PREVIEW DATA</span>
-                    </button>
-
-                    <button onclick="openArkib2()" class="btn-primary flex items-center justify-center space-x-2 bg-indigo-600 text-white py-5 px-4 rounded-2xl font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all uppercase tracking-tight w-full">
-                        <i data-lucide="archive" class="w-5 h-5"></i>
-                        <span>ARKIB 2/08</span>
+                    <button onclick="copyAllData()" class="btn-primary flex items-center justify-center space-x-2 bg-slate-100 text-slate-700 py-5 px-4 rounded-2xl font-black uppercase tracking-tight">
+                        <i data-lucide="clipboard" class="w-5 h-5"></i>
+                        <span>SALIN TEKS</span>
                     </button>
                 </div>
+
+                <button id="btn-save" onclick="saveToSheets()" class="btn-primary flex items-center justify-center space-x-2 bg-emerald-600 text-white py-5 px-4 rounded-2xl font-black hover:bg-emerald-700 w-full shadow-lg shadow-emerald-100">
+                    <i data-lucide="send" class="w-5 h-5"></i>
+                    <span>SIMPAN & HANTAR</span>
+                </button>
+
+                <button onclick="previewDataRekod()" class="btn-primary flex items-center justify-center space-x-2 bg-amber-500 text-white py-5 px-4 rounded-2xl font-black hover:bg-amber-600 w-full shadow-lg shadow-amber-100 uppercase tracking-tight">
+                    <i data-lucide="eye" class="w-5 h-5"></i>
+                    <span>PREVIEW DATA</span>
+                </button>
+
+                <button onclick="openArkib2()" class="btn-primary flex items-center justify-center space-x-2 bg-indigo-600 text-white py-5 px-4 rounded-2xl font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all uppercase tracking-tight w-full">
+                    <i data-lucide="archive" class="w-5 h-5"></i>
+                    <span>ARKIB 2/08</span>
+                </button>
             </div>
         </div>
+
+        <!-- KAD KEJAYAAN + STATUS LAPORAN (dipapar selepas hantar) -->
+        <div id="success-card" class="hidden mt-6 bg-white rounded-[2rem] shadow-xl border border-emerald-100 p-6 animate-in">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center"><i data-lucide="check-circle-2" class="w-5 h-5"></i></div>
+                <div>
+                    <p class="font-black text-emerald-700 uppercase text-sm">Laporan Berjaya Dihantar</p>
+                    <p class="text-xs text-slate-500">No Rujukan: <span id="success-no-rujukan" class="font-bold text-slate-700"></span> &middot; <span id="success-timestamp"></span></p>
+                </div>
+            </div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-3">Status Laporan</p>
+            <div class="grid grid-cols-5 gap-1 text-center" id="status-stepper">
+                <div class="status-step" data-step="Dihantar"><div class="w-8 h-8 mx-auto rounded-full flex items-center justify-center mb-1"><i data-lucide="send" class="w-4 h-4"></i></div><span class="text-[9px] font-bold uppercase">Dihantar</span></div>
+                <div class="status-step" data-step="Sedang Disemak"><div class="w-8 h-8 mx-auto rounded-full flex items-center justify-center mb-1"><i data-lucide="search" class="w-4 h-4"></i></div><span class="text-[9px] font-bold uppercase">Disemak</span></div>
+                <div class="status-step" data-step="Dalam Tindakan"><div class="w-8 h-8 mx-auto rounded-full flex items-center justify-center mb-1"><i data-lucide="wrench" class="w-4 h-4"></i></div><span class="text-[9px] font-bold uppercase">Tindakan</span></div>
+                <div class="status-step" data-step="Selesai"><div class="w-8 h-8 mx-auto rounded-full flex items-center justify-center mb-1"><i data-lucide="check" class="w-4 h-4"></i></div><span class="text-[9px] font-bold uppercase">Selesai</span></div>
+                <div class="status-step" data-step="Ditutup"><div class="w-8 h-8 mx-auto rounded-full flex items-center justify-center mb-1"><i data-lucide="lock" class="w-4 h-4"></i></div><span class="text-[9px] font-bold uppercase">Ditutup</span></div>
+            </div>
+        </div>
+
+        <!-- SEMAK STATUS LAPORAN SEDIA ADA -->
+        <div class="mt-6 bg-white rounded-[2rem] shadow-sm border border-slate-100 p-6">
+            <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Semak Status Laporan</p>
+            <div class="flex gap-2">
+                <input type="text" id="semak-no-rujukan" placeholder="cth: DIS-2026-000135" class="flex-1 bg-slate-50 border-2 border-slate-100 p-3 rounded-xl font-bold text-sm outline-none focus:border-blue-500">
+                <button onclick="semakStatusLaporan()" class="bg-slate-900 text-white px-5 rounded-xl font-black text-xs uppercase">Semak</button>
+            </div>
+            <p id="semak-result" class="text-xs font-bold text-slate-500 mt-3 hidden"></p>
+        </div>
+    </div>
+
+    <!-- QR/BARCODE SCANNER MODAL -->
+    <div id="qr-modal" class="hidden fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6">
+        <video id="qr-video" class="w-full max-w-sm rounded-2xl bg-slate-900" playsinline></video>
+        <p class="text-white text-xs font-bold mt-4 uppercase tracking-widest opacity-70">Halakan kod ke kamera</p>
+        <button onclick="closeQrScanner()" class="mt-6 bg-white/10 text-white px-6 py-3 rounded-xl font-black text-sm uppercase">Batal</button>
+    </div>
+
+    <!-- Photo lightbox -->
+    <div id="photo-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6" onclick="closePhotoModal()">
+        <img id="photo-modal-img" src="" class="max-w-full max-h-full rounded-lg shadow-2xl">
     </div>
 
     <!-- ARKIB 2 VIEW (Pemusnahan Rekod Awam) -->
@@ -377,14 +595,21 @@
         
         const URL_SHEETS_REKOD = 'https://docs.google.com/spreadsheets/d/1_CX7jDm7xl-YGGpyZpZnfPfYBKoU_-TRJtDaFOg4fsI/edit?usp=sharing'; 
         const URL_SHEETS_ARKIB = 'https://docs.google.com/spreadsheets/d/1sdLxpfb1ZOo7STPwu-yTzx4wozmMFgONUb2XqkuYvBI/edit?usp=sharing'; 
+        // Untuk "Semak Status Laporan": tampal URL CSV terbitan (Fail > Kongsi > Terbitkan ke web > CSV)
+        // daripada Sheet REKOD, dengan lajur "NO_RUJUKAN" dan "STATUS" wujud (lihat disposa-one-appscript.gs).
+        const URL_SHEETS_CSV_STATUS = '';
 
         // --- LOG MASUK (nama sahaja, tiada kata laluan) ---
         function handleLogin(e) {
             e.preventDefault();
             const nama = document.getElementById('login-nama').value.trim();
+            const jawatan = document.getElementById('login-jawatan').value.trim();
+            const email = document.getElementById('login-email').value.trim();
             if (nama.length >= 2) {
                 sessionStorage.setItem('isLoggedIn', 'true');
                 sessionStorage.setItem('namaGuru', nama);
+                sessionStorage.setItem('jawatanGuru', jawatan);
+                sessionStorage.setItem('emailGuru', email);
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('app-root').classList.remove('hidden');
                 applyLoggedInName();
@@ -393,14 +618,24 @@
             }
         }
         function handleLogout() {
-            sessionStorage.removeItem('isLoggedIn');
-            sessionStorage.removeItem('namaGuru');
+            sessionStorage.clear();
             location.reload();
         }
         function applyLoggedInName() {
             const nama = sessionStorage.getItem('namaGuru') || 'Guru';
+            const jawatan = sessionStorage.getItem('jawatanGuru') || '-';
+            const email = sessionStorage.getItem('emailGuru') || '-';
             const label = document.getElementById('nama-guru-label');
             if (label) label.innerText = nama;
+            document.getElementById('rep-nama').innerText = nama;
+            document.getElementById('rep-jawatan').innerText = jawatan;
+            document.getElementById('rep-email').innerText = email;
+            updateReportTimestamp();
+        }
+        function updateReportTimestamp() {
+            const now = new Date();
+            document.getElementById('rep-tarikh').innerText = now.toLocaleDateString('ms-MY');
+            document.getElementById('rep-masa').innerText = now.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
         }
         window.addEventListener('DOMContentLoaded', () => {
             if (sessionStorage.getItem('isLoggedIn') === 'true') {
@@ -409,6 +644,154 @@
                 applyLoggedInName();
             }
         });
+
+        // --- LOKASI (sync ke kad Maklumat Pelapor) ---
+        function syncLokasiDisplay() {
+            const l = document.getElementById('sel-lokasi').value;
+            const b = document.getElementById('input-bilik').value;
+            document.getElementById('rep-lokasi').innerText = [l, b].filter(Boolean).join(' - ') || '-';
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('sel-lokasi').addEventListener('change', syncLokasiDisplay);
+            document.getElementById('input-bilik').addEventListener('input', syncLokasiDisplay);
+        });
+
+        // --- JENIS ASET (toggle Buku vs Aset Am + auto Hantar Kepada) ---
+        let jenisAsetDipilih = '';
+        const HANTAR_KEPADA_AUTO = {
+            'ICT': 'Penyelaras ICT',
+            'Perabot': 'Penyelaras Aset',
+            'Elektrik': 'Penyelaras Aset',
+            'Bangunan': 'Penyelaras Aset',
+            'Sukan': 'Penyelaras Aset',
+            'PSS': 'Guru Perpustakaan & Media',
+            'Buku': 'Guru Perpustakaan & Media'
+        };
+        function pilihJenisAset(jenis) {
+            jenisAsetDipilih = jenis;
+            document.querySelectorAll('.jenis-btn').forEach(b => b.classList.toggle('active', b.dataset.jenis === jenis));
+            const isBuku = jenis === 'Buku';
+            document.getElementById('section-buku').classList.toggle('hidden', !isBuku);
+            document.getElementById('section-aset-am').classList.toggle('hidden', isBuku);
+            const auto = HANTAR_KEPADA_AUTO[jenis];
+            if (auto) {
+                const sel = document.getElementById('select-hantar-kepada');
+                if ([...sel.options].some(o => o.value === auto || o.text === auto)) sel.value = auto;
+            }
+        }
+
+        // --- TAHAP KEROSAKAN ---
+        let tahapDipilih = '';
+        function pilihTahap(tahap) {
+            tahapDipilih = tahap;
+            document.querySelectorAll('.tahap-btn').forEach(b => b.classList.toggle('active', b.dataset.tahap === tahap));
+        }
+
+        // --- IMAGE COMPRESSION HELPER (untuk gambar kerosakan) ---
+        function compressImage(file, maxDim = 900, quality = 0.65) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let { width, height } = img;
+                        if (width > height && width > maxDim) { height *= maxDim / width; width = maxDim; }
+                        else if (height > maxDim) { width *= maxDim / height; height = maxDim; }
+                        const canvasEl = document.createElement('canvas');
+                        canvasEl.width = width; canvasEl.height = height;
+                        canvasEl.getContext('2d').drawImage(img, 0, 0, width, height);
+                        resolve(canvasEl.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- GAMBAR KEROSAKAN (3 slot: utama / tambahan / closeup) ---
+        const fotoKerosakan = { utama: null, tambahan: null, closeup: null };
+        async function handleFotoKerosakan(e, slot) {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const dataUrl = await compressImage(file);
+                fotoKerosakan[slot] = dataUrl;
+                const img = document.getElementById(`foto-${slot}-preview`);
+                const icon = document.getElementById(`foto-${slot}-icon`);
+                img.src = dataUrl;
+                img.classList.remove('hidden');
+                icon.classList.add('hidden');
+            } catch (err) {
+                alert('Gagal proses gambar: ' + err.message);
+            }
+        }
+        function openPhotoModal(src) {
+            document.getElementById('photo-modal-img').src = src;
+            document.getElementById('photo-modal').classList.remove('hidden');
+        }
+        function closePhotoModal() { document.getElementById('photo-modal').classList.add('hidden'); }
+
+        // --- SCAN QR / BARCODE (ZXing) untuk Kod Aset ---
+        let qrCodeReader = null;
+        async function openQrScanner() {
+            document.getElementById('qr-modal').classList.remove('hidden');
+            try {
+                qrCodeReader = new ZXing.BrowserMultiFormatReader();
+                const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+                const deviceId = devices.length ? devices[devices.length - 1].deviceId : undefined;
+                qrCodeReader.decodeFromVideoDevice(deviceId, 'qr-video', (result, err) => {
+                    if (result) {
+                        document.getElementById('input-kod-aset').value = result.getText();
+                        closeQrScanner();
+                    }
+                });
+            } catch (err) {
+                alert('Gagal buka kamera untuk imbasan: ' + err.message);
+                closeQrScanner();
+            }
+        }
+        function closeQrScanner() {
+            if (qrCodeReader) { qrCodeReader.reset(); qrCodeReader = null; }
+            document.getElementById('qr-modal').classList.add('hidden');
+        }
+
+        // --- NO. RUJUKAN AUTO ---
+        function generateNoRujukan() {
+            const year = new Date().getFullYear();
+            const rand = Date.now().toString().slice(-6);
+            return `DIS-${year}-${rand}`;
+        }
+
+        // --- SEMAK STATUS LAPORAN (baca CSV terbitan Google Sheets) ---
+        async function semakStatusLaporan() {
+            const noRujukan = document.getElementById('semak-no-rujukan').value.trim();
+            const resultEl = document.getElementById('semak-result');
+            resultEl.classList.remove('hidden');
+            if (!noRujukan) { resultEl.innerText = 'Sila masukkan No. Rujukan.'; return; }
+            if (!URL_SHEETS_CSV_STATUS) {
+                resultEl.innerText = 'Ciri ini belum disediakan — sila tampal URL CSV terbitan Sheet dalam kod (URL_SHEETS_CSV_STATUS).';
+                return;
+            }
+            resultEl.innerText = 'Menyemak...';
+            try {
+                const res = await fetch(URL_SHEETS_CSV_STATUS);
+                const text = await res.text();
+                const rows = text.split('\n').map(r => r.split(','));
+                const header = rows[0].map(h => h.trim().toUpperCase());
+                const refIdx = header.indexOf('NO_RUJUKAN');
+                const statusIdx = header.indexOf('STATUS');
+                const match = rows.slice(1).find(r => r[refIdx] && r[refIdx].trim() === noRujukan);
+                if (match) {
+                    resultEl.innerText = `Status: ${match[statusIdx] || 'Dihantar'}`;
+                } else {
+                    resultEl.innerText = 'No. Rujukan tidak dijumpai.';
+                }
+            } catch (err) {
+                resultEl.innerText = 'Gagal semak: ' + err.message;
+            }
+        }
 
         // Register service worker so the app can be "installed" on Android/iOS
         // home screen and keep opening even with weak/no signal.
@@ -627,20 +1010,72 @@
 
         // --- FORM HELPERS ---
         function resetForm() {
+            document.getElementById('sel-lokasi').value = "";
+            document.getElementById('input-bilik').value = "";
+            syncLokasiDisplay();
+            document.querySelectorAll('.jenis-btn').forEach(b => b.classList.remove('active'));
+            jenisAsetDipilih = '';
+            document.getElementById('section-buku').classList.add('hidden');
+            document.getElementById('section-aset-am').classList.remove('hidden');
+            ['buku-kategori','buku-mata-pelajaran','buku-tajuk','buku-penerbit','buku-isbn','buku-tahun-terbit','buku-jumlah-rosak'].forEach(id => document.getElementById(id).value = "");
+            document.getElementById('buku-tidak-boleh-guna').checked = false;
             document.getElementById('input-tajuk').value = "";
             document.getElementById('input-tahun').value = "";
             document.getElementById('input-meter').value = "";
             document.getElementById('select-cadangan').value = "";
+            document.getElementById('input-kod-aset').value = "";
+            ['utama','tambahan','closeup'].forEach(slot => {
+                fotoKerosakan[slot] = null;
+                document.getElementById(`foto-${slot}-preview`).classList.add('hidden');
+                document.getElementById(`foto-${slot}-icon`).classList.remove('hidden');
+            });
+            document.querySelectorAll('.tahap-btn').forEach(b => b.classList.remove('active'));
+            tahapDipilih = '';
+            document.getElementById('input-penerangan').value = "";
+            document.getElementById('char-count').innerText = "0";
+            document.getElementById('select-keutamaan').value = "";
+            document.getElementById('input-anggaran-kos').value = "";
+            document.getElementById('select-hantar-kepada').selectedIndex = 0;
             fileInputMain.value = "";
+            document.getElementById('success-card').classList.add('hidden');
+            updateReportTimestamp();
+            lucide.createIcons();
+        }
+
+        function kumpulDataLaporan() {
+            const isBuku = jenisAsetDipilih === 'Buku';
+            return {
+                nama: sessionStorage.getItem('namaGuru') || '',
+                jawatan: sessionStorage.getItem('jawatanGuru') || '',
+                email: sessionStorage.getItem('emailGuru') || '',
+                lokasi: document.getElementById('sel-lokasi').value,
+                bilik: document.getElementById('input-bilik').value,
+                jenisAset: jenisAsetDipilih,
+                tajuk: isBuku ? document.getElementById('buku-tajuk').value : document.getElementById('input-tajuk').value,
+                bukuKategori: document.getElementById('buku-kategori').value,
+                bukuMataPelajaran: document.getElementById('buku-mata-pelajaran').value,
+                bukuPenerbit: document.getElementById('buku-penerbit').value,
+                bukuIsbn: document.getElementById('buku-isbn').value,
+                bukuTahunTerbit: document.getElementById('buku-tahun-terbit').value,
+                bukuJumlahRosak: document.getElementById('buku-jumlah-rosak').value,
+                bukuTidakBolehGuna: document.getElementById('buku-tidak-boleh-guna').checked,
+                tahun: document.getElementById('input-tahun').value,
+                meter: document.getElementById('input-meter').value,
+                cadangan: document.getElementById('select-cadangan').value,
+                kodAset: document.getElementById('input-kod-aset').value,
+                tahapKerosakan: tahapDipilih,
+                penerangan: document.getElementById('input-penerangan').value,
+                keutamaan: document.getElementById('select-keutamaan').value,
+                anggaranKos: document.getElementById('input-anggaran-kos').value,
+                hantarKepada: document.getElementById('select-hantar-kepada').value
+            };
         }
 
         function copyAllData() {
-            const t = document.getElementById('input-tajuk').value;
-            const y = document.getElementById('input-tahun').value;
-            const m = document.getElementById('input-meter').value;
-            const c = document.getElementById('select-cadangan').value;
-            navigator.clipboard.writeText(`TAJUK: ${t}\nTAHUN: ${y}\nMETER: ${m}\nCADANGAN: ${c}`);
-            alert("Teks Utama Disalin!");
+            const d = kumpulDataLaporan();
+            const teks = `LOKASI: ${d.lokasi} - ${d.bilik}\nJENIS ASET: ${d.jenisAset}\nTAJUK: ${d.tajuk}\nTAHUN: ${d.tahun}\nMETER/JUMLAH: ${d.meter}\nKOD ASET: ${d.kodAset}\nTAHAP KEROSAKAN: ${d.tahapKerosakan}\nPENERANGAN: ${d.penerangan}\nANGGARAN KOS: RM${d.anggaranKos}\nCADANGAN: ${d.cadangan}\nKEUTAMAAN: ${d.keutamaan}\nHANTAR KEPADA: ${d.hantarKepada}`;
+            navigator.clipboard.writeText(teks);
+            alert("Teks Laporan Disalin!");
         }
 
         function resetArkibForm() {
@@ -667,39 +1102,68 @@
 
         // --- SIMPAN DATA (REKOD UTAMA) ---
         async function saveToSheets() {
-            const tajuk = document.getElementById('input-tajuk').value;
-            const tahun = document.getElementById('input-tahun').value;
-            const meter = document.getElementById('input-meter').value;
-            const cadangan = document.getElementById('select-cadangan').value;
+            const d = kumpulDataLaporan();
 
-            if(!tajuk) { alert("Tajuk tidak boleh kosong."); return; }
+            if (!d.tajuk) { alert(d.jenisAset === 'Buku' ? "Tajuk Buku tidak boleh kosong." : "Tajuk tidak boleh kosong."); return; }
+            if (!jenisAsetDipilih) { alert("Sila pilih Jenis Aset."); return; }
 
             statusContainer.classList.remove('hidden');
-            statusText.innerText = "Menyimpan ke Rekod...";
+            statusText.innerText = "Menyimpan Laporan...";
 
-            const today = new Date().toLocaleDateString('ms-MY');
+            const now = new Date();
+            const noRujukan = generateNoRujukan();
+            const timestampLabel = `${now.toLocaleDateString('ms-MY')} ${now.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}`;
 
-            const params = new URLSearchParams({
-                'TARIKH': today,
-                'TAJUK_REKOD_BAHAN': tajuk,
-                'TAHUN': tahun,
-                'METER_JUMLAH': meter,
-                'CADANGAN_TINDAKAN': cadangan
-            });
+            const payload = {
+                NO_RUJUKAN: noRujukan,
+                TARIKH: now.toLocaleDateString('ms-MY'),
+                MASA: now.toLocaleTimeString('ms-MY'),
+                NAMA_PELAPOR: d.nama,
+                JAWATAN_PELAPOR: d.jawatan,
+                EMEL_PELAPOR: d.email,
+                LOKASI: d.lokasi,
+                BILIK_MAKMAL: d.bilik,
+                JENIS_ASET: d.jenisAset,
+                TAJUK_REKOD_BAHAN: d.tajuk,
+                BUKU_KATEGORI: d.bukuKategori,
+                BUKU_MATA_PELAJARAN: d.bukuMataPelajaran,
+                BUKU_PENERBIT: d.bukuPenerbit,
+                BUKU_ISBN: d.bukuIsbn,
+                BUKU_TAHUN_TERBIT: d.bukuTahunTerbit,
+                BUKU_JUMLAH_ROSAK: d.bukuJumlahRosak,
+                BUKU_TIDAK_BOLEH_GUNA: d.bukuTidakBolehGuna ? 'YA' : 'TIDAK',
+                TAHUN: d.tahun,
+                METER_JUMLAH: d.meter,
+                KOD_ASET: d.kodAset,
+                TAHAP_KEROSAKAN: d.tahapKerosakan,
+                PENERANGAN_RINGKAS: d.penerangan,
+                CADANGAN_TINDAKAN: d.cadangan,
+                TAHAP_KEUTAMAAN: d.keutamaan,
+                ANGGARAN_KOS: d.anggaranKos,
+                HANTAR_KEPADA: d.hantarKepada,
+                STATUS: 'Dihantar',
+                FOTO_UTAMA: fotoKerosakan.utama || '',
+                FOTO_TAMBAHAN: fotoKerosakan.tambahan || '',
+                FOTO_CLOSEUP: fotoKerosakan.closeup || ''
+            };
 
             fetch(URL_WEB_APP_REKOD, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
             })
             .then(() => {
-                alert("Rekod Utama Berjaya Dihantar!");
                 statusContainer.classList.add('hidden');
-                resetForm();
+                document.getElementById('success-no-rujukan').innerText = noRujukan;
+                document.getElementById('success-timestamp').innerText = timestampLabel;
+                document.querySelectorAll('.status-step').forEach(s => s.classList.toggle('active', s.dataset.step === 'Dihantar'));
+                document.getElementById('success-card').classList.remove('hidden');
+                document.getElementById('success-card').scrollIntoView({ behavior: 'smooth' });
+                lucide.createIcons();
             })
             .catch(err => {
-                alert("Ralat penghantaran Rekod Utama: " + err.message);
+                alert("Ralat penghantaran laporan: " + err.message);
                 statusContainer.classList.add('hidden');
             });
         }
